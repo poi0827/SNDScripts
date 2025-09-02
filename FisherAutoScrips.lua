@@ -1,9 +1,8 @@
 --[=====[
 [[SND Metadata]]
 author: Ahernika (原版作者) || poi0827 && deepseek (迁移至新版SND)
-version: 1.1.3
-description: >
-  自动钓收藏品脚本
+version: 1.1.4
+description: >2
 
   注意事项：
 
@@ -11,7 +10,7 @@ description: >
 
   ②请开启DR自动防警惕
 
-  ③兼容空天姬，请自行设置
+  ③兼容空天姬，需要在DR防警惕中写入额外文本命令 /e ktjys 佐戈秃鹰 (如果目标为佐戈秃鹰,灵岩之剑同理)
 
   ④请自行修改钓场点位，避免模型重叠
 
@@ -22,6 +21,10 @@ plugin_dependencies:
 - TeleporterPlugin
 - DailyRoutines
 configs:
+  FishingAddon:
+    default: 1
+    description: 选择钓鱼插件，0为Autohook，1为空天姬
+    type: string
   FishingAetheryte:
     default: 胡萨塔伊驿镇
     description: 离钓场最近的以太之光名字
@@ -82,36 +85,20 @@ configs:
     default: 50
     description: 修理阈值
     type: string
-  StartFishingCommand1:
-    default: /ahon
-    description: 开始钓鱼时使用的第一个指令
-    type: string
-  StartFishingCommand2:
-    default: /ac 抛竿
-    description: 开始钓鱼时使用的第二个指令
-    type: string
-  StopFishingCommand1:
-    default: /ahoff
-    description: 停止钓鱼时使用的第一个指令
-    type: string
-  StopFishingCommand2:
-    default: /ac 中断
-    description: 停止钓鱼时使用的第二个指令
+  MinItemsBeforeTurnins:
+    default: 1
+    description: 最少收藏品兑换数量
     type: string
   ScripOvercapLimit:
     default: 3900
     description: 橙票/紫票大于该值时停止提交收藏品，以防止溢出
     type: string
   FishingBaitId:
-    default: 0
+    default: 43857
     description: 使用的鱼饵ID
     type: string
-  MinItemsBeforeTurnins:
-    default: 1
-    description: 最少收藏品兑换数量
-    type: string
   DebugMode:
-    default: 1
+    default: 0
     description: DEBUG模式
     type: string
 
@@ -121,6 +108,7 @@ configs:
 import("System.Numerics")
 
 -- 获取配置
+FishingAddon = tonumber(Config.Get("FishingAddon")) or 0
 FishingAetheryte = Config.Get("FishingAetheryte")
 FishingZoneID = tonumber(Config.Get("FishingZoneID"))
 UnmountPosition = {
@@ -133,20 +121,31 @@ FishingPosition = {
     y = tonumber(Config.Get("FishingPositionY")),
     z = tonumber(Config.Get("FishingPositionZ"))
 }
- IntervalRate = tonumber(Config.Get("IntervalRate")) or 0.2
+IntervalRate = tonumber(Config.Get("IntervalRate")) or 0.2
 NumInventoryFreeSlotThreshold = tonumber(Config.Get("NumInventoryFreeSlotThreshold"))
 DoExtract = Config.Get("DoExtract")
 DoRepair = Config.Get("DoRepair")
 MedicineToUse = Config.Get("MedicineToUse")
 RepairAmount = tonumber(Config.Get("RepairAmount"))
-StartFishingCommand1 = Config.Get("StartFishingCommand1")
-StartFishingCommand2 = Config.Get("StartFishingCommand2")
 MinItemsBeforeTurnins = tonumber(Config.Get("MinItemsBeforeTurnins")) or 1
-StopFishingCommand1 = Config.Get("StopFishingCommand1")
-StopFishingCommand2 = Config.Get("StopFishingCommand2")
 ScripOvercapLimit = tonumber(Config.Get("ScripOvercapLimit"))
 FishingBaitId = tonumber(Config.Get("FishingBaitId")) or 0
 DebugMode = tonumber(Config.Get("DebugMode"))
+
+-- 根据选择的钓鱼插件设置相应的命令
+if FishingAddon == 1 then
+    -- 空天姬模式
+    StartFishingCommand1 = "/e ktjys 佐戈秃鹰"
+    StartFishingCommand2 = ""
+    StopFishingCommand1 = "/e 停止"
+    StopFishingCommand2 = "/ac 中断"
+else
+    -- Autohook模式（默认）
+    StartFishingCommand1 = "/ahon"
+    StartFishingCommand2 = "/ac 抛竿"
+    StopFishingCommand1 = "/ahoff"
+    StopFishingCommand2 = "/ac 中断"
+end
 
 -- 票据兑换设置
 ExchangeItemTable = {
