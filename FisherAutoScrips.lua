@@ -1,7 +1,7 @@
 --[=====[
 [[SND Metadata]]
 author: Ahernika (原版作者) || poi0827 && deepseek (迁移至新版SND)
-version: 1.1.5
+version: 1.1.6
 description: >
   FisherAutoScrips：https://github.com/poi0827/SNDScripts/edit/main/FisherAutoScrips.lua 
 
@@ -151,7 +151,7 @@ end
 -- 票据兑换设置
 ExchangeItemTable = {
     { 4, 8, 6, 1000, 41785 }, -- 橙票用于兑换 (默认为犎牛角笛的交换票据)
-    { 4, 1, 0, 20, 33914 },   -- 紫票用于兑换 (默认为高级强心剂) 蜻蜓为4, 6, 0, 5, 33914
+    { 4, 1, 0, 20, 33914 },   -- 紫票用于兑换 (默认为高级强心剂)    4, 6, 0, 5, 33914为蜻蜓
 }
 
 CollectibleItemTable = { -- 用于提交的收藏品列表
@@ -637,124 +637,6 @@ function Dismount()
     DebugLog("下坐骑完成")
 end
 
-function RepairExtractCheck()
-    DebugLog("开始检查修理和精炼")
-    
-    -- 确保玩家可用
-    if not IsPlayerAvailable() then
-        DebugLog("玩家不可用，跳过修理和精炼检查")
-        return
-    end
-    
-    -- 修理装备
-    if DoRepair == "true" then
-        DebugLog("尝试修理装备")
-        try {
-            function()
-                IPC.vnavmesh.Stop()
-                if Svc.Condition[4] then
-                    DebugLog("尝试下坐骑")
-                    Dismount()
-                end
-                
-                DebugLog("打开修理界面")
-                local timeout_start = os.clock()
-                while not Addons.GetAddon("Repair").Ready do
-                    yield("/gaction 修理")
-                    yield("/wait " .. IntervalRate * 5)
-                    if os.clock() - timeout_start > 30 then
-                        DebugLog("修理界面打开超时")
-                        return
-                    end
-                end
-                
-                yield("/callback Repair true 0")
-                yield("/wait " .. IntervalRate)
-                
-                if Addons.GetAddon("SelectYesno").Ready then
-                    yield("/callback SelectYesno true 0")
-                end
-                
-                timeout_start = os.clock()
-                -- 这里注释掉了修理过程的判断
-                while Svc.Condition[39] do -- 39 = Repairing condition
-                     yield("/wait " .. IntervalRate * 10)
-                     if os.clock() - timeout_start > 60 then
-                         DebugLog("修理过程超时")
-                         break
-                     end
-                end
-                yield("/wait " .. IntervalRate * 15)  -- 让修理过程持续30秒
-                yield("/callback Repair true -1")
-                
-                DebugLog("修理完成")
-            end,
-            catch(function(err)
-                DebugLog("修理过程中出错: " .. tostring(err))
-            end)
-        }
-    else
-        DebugLog("不需要修理装备")
-    end
-    
-    -- 精炼魔晶石
-    if DoExtract == "true" then
-        DebugLog("尝试精炼魔晶石")
-        try {
-            function()
-                IPC.vnavmesh.Stop()
-                if Svc.Condition[4] then
-                    DebugLog("尝试下坐骑")
-                    Dismount()
-                end
-                
-                DebugLog("打开精炼界面")
-                yield("/gaction 精制魔晶石")
-                
-                local timeout_start = os.clock()
-                while not Addons.GetAddon("Materialize").Ready do
-                    yield("/wait " .. IntervalRate)
-                    if os.clock() - timeout_start > 30 then
-                        DebugLog("精炼界面打开超时")
-                        return
-                    end
-                end
-                
-                while CanExtractMateria(100) do
-                    yield("/callback Materialize true 2 0")
-                    yield("/wait " .. IntervalRate * 5)
-                    
-                    if Addons.GetAddon("MaterializeDialog").Ready then
-                        yield("/callback MaterializeDialog true 0")
-                    end
-                    
-                    timeout_start = os.clock()
-                    -- 这里注释掉了精炼过程的判断
-                     while Svc.Condition[39] do
-                         yield("/wait " .. IntervalRate * 30)
-                         if os.clock() - timeout_start > 60 then
-                             DebugLog("精炼过程超时")
-                             break
-                         end
-                     end
-                    
-                    yield("/wait " .. IntervalRate * 15)  -- 让精炼过程持续30秒
-                end
-                
-                yield("/wait " .. IntervalRate * 10)
-                yield("/callback Materialize true -1")
-                DebugLog("精炼魔晶石完成")
-            end,
-            catch(function(err)
-                DebugLog("精炼过程中出错: " .. tostring(err))
-            end)
-        }
-    else
-        DebugLog("不需要精炼魔晶石")
-    end
-end
-
-
 
 function CollectableAppraiser()
     DebugLog("开始提交收藏品")
@@ -1166,19 +1048,25 @@ function Main()
     DebugLog("当前背包空格: " .. i_count)
     
     -- 等待直到背包空间不足或需要修理
-    while i_count >= NumInventoryFreeSlotThreshold or NeedsRepair(RepairAmount) or CanExtractMateria() do
-        yield("/wait " .. IntervalRate * 200)
-        
-        -- 检查鱼饵数量
-        if GetItemCount(FishingBaitId) == 0 then
-            yield("/echo 鱼饵数量为0，脚本停止")
-            StopMain = true
-            return
-        end
-
-        i_count = GetInventoryFreeSlotCount()
-        DebugLog("检查背包空格: " .. i_count)
+    while i_count >= NumInventoryFreeSlotThreshold do
+    yield("/wait " .. IntervalRate * 200)
+    
+    -- 检查鱼饵数量
+    if GetItemCount(FishingBaitId) == 0 then
+        yield("/echo 鱼饵数量为0，脚本停止")
+        StopMain = true
+        return
     end
+    -- 检查是否需要修理或精炼
+    if NeedsRepair(RepairAmount) then
+        break
+    end
+    if CanExtractMateria() then
+        break
+    end
+    i_count = GetInventoryFreeSlotCount()
+    DebugLog("检查背包空格: " .. i_count)
+end
 
     -- 等待完成最后的钓鱼状态
     if Svc.Condition[6] or Svc.Condition[42] then
