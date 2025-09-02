@@ -1,7 +1,7 @@
 --[=====[
 [[SND Metadata]]
 author: Ahernika (原版作者) || poi0827 && deepseek (迁移至新版SND)
-version: 1.1.4
+version: 1.1.5
 description: >
   FisherAutoScrips：https://github.com/poi0827/SNDScripts/edit/main/FisherAutoScrips.lua 
 
@@ -151,14 +151,14 @@ end
 -- 票据兑换设置
 ExchangeItemTable = {
     { 4, 8, 6, 1000, 41785 }, -- 橙票用于兑换 (默认为犎牛角笛的交换票据)
-    { 4, 1, 0, 20, 33914 },   -- 紫票用于兑换 (默认为高级强心剂)
+    { 4, 1, 0, 20, 33914 },   -- 紫票用于兑换 (默认为高级强心剂) 蜻蜓为4, 6, 0, 5, 33914
 }
 
 CollectibleItemTable = { -- 用于提交的收藏品列表
     -- 橙票收藏品
     { 6, 43761, 10, 41785 }, -- 佐戈秃鹰
     -- 紫票收藏品
-    { 28, 44233, 10, 33914 }, -- 灵岩之剑
+    { 28, 36473, 10, 33914 }, -- 灵岩之剑
 }
 
 -- 票据使用统计
@@ -730,13 +730,13 @@ function RepairExtractCheck()
                     
                     timeout_start = os.clock()
                     -- 这里注释掉了精炼过程的判断
-                    -- while Svc.Condition[39] do
-                    --     yield("/wait " .. IntervalRate * 30)
-                    --     if os.clock() - timeout_start > 60 then
-                    --         DebugLog("精炼过程超时")
-                    --         break
-                    --     end
-                    -- end
+                     while Svc.Condition[39] do
+                         yield("/wait " .. IntervalRate * 30)
+                         if os.clock() - timeout_start > 60 then
+                             DebugLog("精炼过程超时")
+                             break
+                         end
+                     end
                     
                     yield("/wait " .. IntervalRate * 15)  -- 让精炼过程持续30秒
                 end
