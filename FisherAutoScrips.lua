@@ -2,7 +2,8 @@
 [[SND Metadata]]
 author: Ahernika (原版作者) || poi0827 && deepseek (迁移至新版SND)
 version: 1.1.4
-description: >2
+description: >
+  FisherAutoScrips：https://github.com/poi0827/SNDScripts/edit/main/FisherAutoScrips.lua 
 
   注意事项：
 
@@ -1306,3 +1307,4 @@ if not success then
     DebugLog("脚本执行出错: " .. tostring(err))
     yield("/echo 脚本执行出错: " .. tostring(err))
 end
+
