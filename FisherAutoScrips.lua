@@ -3,7 +3,7 @@
 author: Ahernika (原版作者) || poi0827 && deepseek (迁移至新版SND)
 version: 1.1.6
 description: >
-  FisherAutoScrips：https://github.com/poi0827/SNDScripts/edit/main/FisherAutoScrips.lua 
+  FisherAutoScrips：https://github.com/poi0827/SNDScripts/edit/main/FisherAutoScrips.lua 请在github获取最新版 旧版可能有bug
 
   注意事项：
 
@@ -1195,4 +1195,5 @@ if not success then
     DebugLog("脚本执行出错: " .. tostring(err))
     yield("/echo 脚本执行出错: " .. tostring(err))
 end
+
 
