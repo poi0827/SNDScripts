@@ -1295,15 +1295,9 @@ function Main()
     end
 
     -- 等待完成最后的钓鱼状态
-    if Svc.Condition[6] or Svc.Condition[42] then
-        DebugLog("等待钓鱼状态结束")
-        yield("/wait " .. IntervalRate * 24)
-    end
-
-    yield("/echo 停止钓鱼，执行其他任务")
+    StopFishing()
     yield("/echo 正在检查食药, 精制魔晶石, 修理装备并提交收藏品")
     
-    StopFishing()
     yield("/wait " .. IntervalRate * 10)
 
     -- 现场任务
