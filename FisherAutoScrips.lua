@@ -1,9 +1,9 @@
 --[=====[
 [[SND Metadata]]
 author: Ahernika (原版作者) || poi0827 && deepseek (迁移至新版SND)
-version: 1.1.6
+version: 1.2.1
 description: >
-  FisherAutoScrips：https://github.com/poi0827/SNDScripts/edit/main/FisherAutoScrips.lua 请在github获取最新版 旧版可能有bug
+  FisherAutoScrips：https://github.com/poi0827/SNDScripts/edit/main/FisherAutoScrips.lua 
 
   注意事项：
 
@@ -16,6 +16,9 @@ description: >
   ④请自行修改钓场点位，避免模型重叠
 
   ⑤兼容钓鱼紫票，请自行修改钓场
+
+  ⑥新增根据艾欧泽亚时间自动切换钓场功能 双钓场模式建议使用空天姬，不兼容autohook（切预设太麻烦了）
+
 plugin_dependencies:
 - Lifestream
 - vnavmesh
@@ -26,37 +29,105 @@ configs:
     default: 1
     description: 选择钓鱼插件，0为Autohook，1为空天姬
     type: string
-  FishingAetheryte:
+  FishingAetheryte1:
     default: 胡萨塔伊驿镇
-    description: 离钓场最近的以太之光名字
+    description: 钓场一的以太之光名字
     type: string
-  FishingZoneID:
+  FishingZoneID1:
     default: 1190
-    description: 钓鱼区域ID
+    description: 钓场一区域ID
     type: string
-  UnmountPositionX:
+  UnmountPositionX1:
     default: -255.00215
-    description: 下坐骑位置X坐标
+    description: 钓场一下坐骑位置X坐标
     type: string
-  UnmountPositionY:
+  UnmountPositionY1:
     default: -43.69279
-    description: 下坐骑位置Y坐标
+    description: 钓场一下坐骑位置Y坐标
     type: string
-  UnmountPositionZ:
+  UnmountPositionZ1:
     default: 650.05786
-    description: 下坐骑位置Z坐标
+    description: 钓场一下坐骑位置Z坐标
     type: string
-  FishingPositionX:
+  FishingPositionX1:
     default: -260.50952
-    description: 钓场位置X坐标
+    description: 钓场一位置X坐标
     type: string
-  FishingPositionY:
+  FishingPositionY1:
     default: -44.57518
-    description: 钓场位置Y坐标
+    description: 钓场一位置Y坐标
     type: string
-  FishingPositionZ:
+  FishingPositionZ1:
     default: 654.30914
-    description: 钓场位置Z坐标
+    description: 钓场一位置Z坐标
+    type: string
+  TargetFish1:
+    default: 佐戈秃鹰
+    description: 钓场一目标鱼名称
+    type: string
+  FishingBaitId1:
+    default: 43857
+    description: 钓场一使用的鱼饵ID
+    type: string
+  FishingAetheryte2:
+    default: 尾羽集落
+    description: 钓场二的以太之光名字
+    type: string
+  FishingZoneID2:
+    default: 398
+    description: 钓场二区域ID
+    type: string
+  UnmountPositionX2:
+    default: 454.22104
+    description: 钓场二下坐骑位置X坐标
+    type: string
+  UnmountPositionY2:
+    default: 58.429157
+    description: 钓场二下坐骑位置Y坐标
+    type: string
+  UnmountPositionZ2:
+    default: -807.5508
+    description: 钓场二下坐骑位置Z坐标
+    type: string
+  FishingPositionX2:
+    default: 453.72137
+    description: 钓场二位置X坐标
+    type: string
+  FishingPositionY2:
+    default: 58.429157
+    description: 钓场二位置Y坐标
+    type: string
+  FishingPositionZ2:
+    default: -809.5843
+    description: 钓场二位置Z坐标
+    type: string
+  TargetFish2:
+    default: 落雷鳗
+    description: 钓场二目标鱼名称
+    type: string
+  FishingBaitId2:
+    default: 12711
+    description: 钓场二使用的鱼饵ID
+    type: string
+  EnableETTimeSwitch:
+    default: true
+    description: 是否启用根据艾欧泽亚时间自动切换钓场功能
+    type: boolean
+  ETStartHour:
+    default: 22
+    description: ET时间开始小时（0-23）
+    type: string
+  ETStartMinute:
+    default: 0
+    description: ET时间开始分钟（0-59）
+    type: string
+  ETEndHour:
+    default: 03
+    description: ET时间结束小时（0-24）
+    type: string
+  ETEndMinute:
+    default: 19
+    description: ET时间结束分钟（0-59）
     type: string
   ScripExchangeLocation:
     default: 游末邦
@@ -94,12 +165,8 @@ configs:
     default: 3900
     description: 橙票/紫票大于该值时停止提交收藏品，以防止溢出
     type: string
-  FishingBaitId:
-    default: 43857
-    description: 使用的鱼饵ID
-    type: string
   DebugMode:
-    default: 0
+    default: 1
     description: DEBUG模式
     type: string
 
@@ -110,18 +177,47 @@ import("System.Numerics")
 
 -- 获取配置
 FishingAddon = tonumber(Config.Get("FishingAddon")) or 0
-FishingAetheryte = Config.Get("FishingAetheryte")
-FishingZoneID = tonumber(Config.Get("FishingZoneID"))
-UnmountPosition = {
-    x = tonumber(Config.Get("UnmountPositionX")),
-    y = tonumber(Config.Get("UnmountPositionY")),
-    z = tonumber(Config.Get("UnmountPositionZ"))
+
+-- 钓场一配置
+FishingAetheryte1 = Config.Get("FishingAetheryte1")
+FishingZoneID1 = tonumber(Config.Get("FishingZoneID1"))
+UnmountPosition1 = {
+    x = tonumber(Config.Get("UnmountPositionX1")),
+    y = tonumber(Config.Get("UnmountPositionY1")),
+    z = tonumber(Config.Get("UnmountPositionZ1"))
 }
-FishingPosition = {
-    x = tonumber(Config.Get("FishingPositionX")),
-    y = tonumber(Config.Get("FishingPositionY")),
-    z = tonumber(Config.Get("FishingPositionZ"))
+FishingPosition1 = {
+    x = tonumber(Config.Get("FishingPositionX1")),
+    y = tonumber(Config.Get("FishingPositionY1")),
+    z = tonumber(Config.Get("FishingPositionZ1"))
 }
+TargetFish1 = Config.Get("TargetFish1")
+FishingBaitId1 = tonumber(Config.Get("FishingBaitId1")) or 0
+
+-- 钓场二配置
+FishingAetheryte2 = Config.Get("FishingAetheryte2")
+FishingZoneID2 = tonumber(Config.Get("FishingZoneID2"))
+UnmountPosition2 = {
+    x = tonumber(Config.Get("UnmountPositionX2")),
+    y = tonumber(Config.Get("UnmountPositionY2")),
+    z = tonumber(Config.Get("UnmountPositionZ2"))
+}
+FishingPosition2 = {
+    x = tonumber(Config.Get("FishingPositionX2")),
+    y = tonumber(Config.Get("FishingPositionY2")),
+    z = tonumber(Config.Get("FishingPositionZ2"))
+}
+TargetFish2 = Config.Get("TargetFish2")
+FishingBaitId2 = tonumber(Config.Get("FishingBaitId2")) or 0
+
+-- 时间配置
+EnableETTimeSwitch = Config.Get("EnableETTimeSwitch") or false
+ETStartHour = tonumber(Config.Get("ETStartHour")) or 0
+ETStartMinute = tonumber(Config.Get("ETStartMinute")) or 0
+ETEndHour = tonumber(Config.Get("ETEndHour")) or 24
+ETEndMinute = tonumber(Config.Get("ETEndMinute")) or 0
+
+-- 通用配置
 IntervalRate = tonumber(Config.Get("IntervalRate")) or 0.2
 NumInventoryFreeSlotThreshold = tonumber(Config.Get("NumInventoryFreeSlotThreshold"))
 DoExtract = Config.Get("DoExtract")
@@ -130,13 +226,15 @@ MedicineToUse = Config.Get("MedicineToUse")
 RepairAmount = tonumber(Config.Get("RepairAmount"))
 MinItemsBeforeTurnins = tonumber(Config.Get("MinItemsBeforeTurnins")) or 1
 ScripOvercapLimit = tonumber(Config.Get("ScripOvercapLimit"))
-FishingBaitId = tonumber(Config.Get("FishingBaitId")) or 0
 DebugMode = tonumber(Config.Get("DebugMode"))
 
 -- 根据选择的钓鱼插件设置相应的命令
 if FishingAddon == 1 then
-    -- 空天姬模式
-    StartFishingCommand1 = "/e ktjys 佐戈秃鹰"
+    -- 空天姬模式 - 根据当前钓场选择目标鱼
+    StartFishingCommand1 = function()
+        local targetFish = GetCurrentTargetFish()
+        return "/e ktjys " .. targetFish
+    end
     StartFishingCommand2 = ""
     StopFishingCommand1 = "/e 停止"
     StopFishingCommand2 = "/ac 中断"
@@ -151,7 +249,7 @@ end
 -- 票据兑换设置
 ExchangeItemTable = {
     { 4, 8, 6, 1000, 41785 }, -- 橙票用于兑换 (默认为犎牛角笛的交换票据)
-    { 4, 1, 0, 20, 33914 },   -- 紫票用于兑换 (默认为高级强心剂)    4, 6, 0, 5, 33914为蜻蜓
+    { 4, 1, 0, 20, 33914 },   -- 紫票用于兑换 (默认为高级强心剂)
 }
 
 CollectibleItemTable = { -- 用于提交的收藏品列表
@@ -159,6 +257,8 @@ CollectibleItemTable = { -- 用于提交的收藏品列表
     { 6, 43761, 10, 41785 }, -- 佐戈秃鹰
     -- 紫票收藏品
     { 28, 36473, 10, 33914 }, -- 灵岩之剑
+    { 87, 12828, 10, 33914 }, -- 落雷鳗
+    --格式为{ 收藏品在提交界面所在行数 , 物品id , 提交职业（捕鱼人为10）, 票据id（橙票为41875，紫票为33914） }
 }
 
 -- 票据使用统计
@@ -186,6 +286,82 @@ function DebugLog(message)
     if DebugMode == 1 then
         yield("/echo [DEBUG] " .. message)
     end
+end
+
+-- 获取当前艾欧泽亚时间的小时和分钟
+function GetETHourMinute()
+    if Instances and Instances.Framework and Instances.Framework.EorzeaTime then
+        local totalSeconds = Instances.Framework.EorzeaTime
+        local totalMinutes = math.floor(totalSeconds / 60)
+        local hours = math.floor(totalMinutes / 60) % 24
+        local minutes = totalMinutes % 60
+        return hours, minutes
+    else
+        DebugLog("无法获取艾欧泽亚时间")
+        return 0, 0
+    end
+end
+
+-- 判断是否在指定的ET时间范围内
+function IsInETTimeRange()
+    if  not EnableETTimeSwitch then
+        DebugLog("ET时间切换功能已禁用，默认使用钓场一")
+        return true
+    end
+    
+    local currentHour, currentMinute = GetETHourMinute()
+    local currentTotalMinutes = currentHour * 60 + currentMinute
+    local startTotalMinutes = ETStartHour * 60 + ETStartMinute
+    local endTotalMinutes = ETEndHour * 60 + ETEndMinute
+    
+    DebugLog(string.format("当前ET时间: %02d:%02d, 时间范围: %02d:%02d - %02d:%02d", 
+                          currentHour, currentMinute, ETStartHour, ETStartMinute, ETEndHour, ETEndMinute))
+    
+    -- 处理跨天的时间范围
+    if startTotalMinutes <= endTotalMinutes then
+        -- 正常时间范围（不跨天）
+        return currentTotalMinutes >= startTotalMinutes and currentTotalMinutes < endTotalMinutes
+    else
+        -- 跨天时间范围（例如 22:00 - 04:00）
+        return currentTotalMinutes >= startTotalMinutes or currentTotalMinutes < endTotalMinutes
+    end
+end
+
+-- 根据ET时间判断当前应该使用哪个钓场
+function GetCurrentFishingZone()
+    if not IsInETTimeRange() then
+        DebugLog("当前ET时间不在范围内，使用钓场一")
+        return {
+            aetheryte = FishingAetheryte1,
+            zoneId = FishingZoneID1,
+            unmountPos = UnmountPosition1,
+            fishingPos = FishingPosition1,
+            targetFish = TargetFish1,
+            baitId = FishingBaitId1
+        }
+    else
+        DebugLog("当前ET时间在范围内，使用钓场二")
+        return {
+            aetheryte = FishingAetheryte2,
+            zoneId = FishingZoneID2,
+            unmountPos = UnmountPosition2,
+            fishingPos = FishingPosition2,
+            targetFish = TargetFish2,
+            baitId = FishingBaitId2
+        }
+    end
+end
+
+-- 获取当前钓场的目标鱼
+function GetCurrentTargetFish()
+    local currentZone = GetCurrentFishingZone()
+    return currentZone.targetFish
+end
+
+-- 获取当前钓场的鱼饵ID
+function GetCurrentBaitId()
+    local currentZone = GetCurrentFishingZone()
+    return currentZone.baitId
 end
 
 -- 辅助函数
@@ -399,27 +575,29 @@ end
 
 -- 检查并更换鱼饵
 function CheckAndChangeBait()
-    if FishingBaitId == nil or FishingBaitId == 0 then
-        DebugLog("未设置鱼饵ID，跳过鱼饵检查")
+    local currentBaitId = GetCurrentBaitId()
+    
+    if currentBaitId == nil or currentBaitId == 0 then
+        DebugLog("未设置当前钓场的鱼饵ID，跳过鱼饵检查")
         return true
     end
     
     -- 检查当前鱼饵
     local currentBait = Player.FishingBait
-    if currentBait ~= FishingBaitId then
+    if currentBait ~= currentBaitId then
         DebugLog("当前鱼饵与配置不同，更换鱼饵")
-        yield("/pdr bait " .. tostring(FishingBaitId))  -- 确保转换为字符串
+        yield("/pdr bait " .. tostring(currentBaitId))  -- 确保转换为字符串
         yield("/wait " .. IntervalRate * 3)
         
         -- 确认鱼饵是否更换成功
-        if Player.FishingBait ~= FishingBaitId then
+        if Player.FishingBait ~= currentBaitId then
             yield("/echo 鱼饵更换失败，请检查鱼饵ID是否正确")
             return false
         end
     end
     
     -- 检查鱼饵数量
-    local baitCount = GetItemCount(FishingBaitId)
+    local baitCount = GetItemCount(currentBaitId)
     if baitCount == 0 then
         yield("/echo 鱼饵数量为0，脚本停止")
         return false
@@ -474,7 +652,7 @@ function UseMedicine()
     DebugLog("开始使用药品")
     
     -- 从配置读取药品名称
-    local medicine = Config.Get("MedicineToUse")
+    local medicine = MedicineToUse
     DebugLog("从配置获取药品名称: " .. tostring(medicine))
     
     -- 兼容无药品配置情况：直接跳过，不输出错误
@@ -637,9 +815,9 @@ function Dismount()
     DebugLog("下坐骑完成")
 end
 
-
 function CollectableAppraiser()
     DebugLog("开始提交收藏品")
+    --未打开收藏品交易界面时打开界面
     while not Addons.GetAddon("CollectablesShop").Ready do
         if GetTargetName() ~= "收藏品交易员" then
             DebugLog("寻找收藏品交易员")
@@ -710,7 +888,6 @@ function CollectableAppraiser()
     end
 end
 
-
 function ScripExchange()
     DebugLog("开始兑换票据")
     local session_orange_used = 0
@@ -755,27 +932,39 @@ function ScripExchange()
         DebugLog("当前票据数量: " .. scrips_owned)
         
         if scrips_owned >= collectible_scrip_price then
-            local scrip_item_number_to_buy = math.min(scrips_owned // collectible_scrip_price, 99)
-            local scrips_to_use = scrip_item_number_to_buy * collectible_scrip_price
-            
-            DebugLog("购买数量: " .. scrip_item_number_to_buy)
-            DebugLog("使用票据: " .. scrips_to_use)
-            
-            yield("/callback InclusionShop true 14 " .. scrip_exchange_item_to_buy_row .. " " .. scrip_item_number_to_buy)
-            yield("/wait " .. IntervalRate * 5)
-            
-            if Addons.GetAddon("ShopExchangeItemDialog").Ready then
-                yield("/callback ShopExchangeItemDialog true 0")
-                yield("/wait " .. IntervalRate)
+            local total_items_to_buy = math.floor(scrips_owned / collectible_scrip_price)
+            local scrips_used = 0
+
+            -- 计算每次兑换的数量，最多99个
+            while total_items_to_buy > 0 do
+                local items_to_buy = math.min(total_items_to_buy, 99) -- 每次最多兑换99个
+                local scrips_to_use = items_to_buy * collectible_scrip_price
+                scrips_used = scrips_used + scrips_to_use
                 
-                -- 记录使用的票据数量
-                if scrip_type == 41785 then -- 橙票
-                    session_orange_used = session_orange_used + scrips_to_use
-                    TotalOrangeScripsUsed = TotalOrangeScripsUsed + scrips_to_use
-                elseif scrip_type == 33914 then -- 紫票
-                    session_purple_used = session_purple_used + scrips_to_use
-                    TotalPurpleScripsUsed = TotalPurpleScripsUsed + scrips_to_use
+                -- 执行兑换
+                DebugLog("购买数量: " .. items_to_buy)
+                DebugLog("使用票据: " .. scrips_to_use)
+                yield("/callback InclusionShop true 14 " .. scrip_exchange_item_to_buy_row .. " " .. items_to_buy)
+                yield("/wait " .. IntervalRate * 5)
+
+                -- 如果兑换窗口已经准备好，进行确认
+                if Addons.GetAddon("ShopExchangeItemDialog").Ready then
+                    yield("/callback ShopExchangeItemDialog true 0")
+                    yield("/wait " .. IntervalRate)
+                    
+                    -- 记录使用的票据数量
+                    if scrip_type == 41785 then -- 橙票
+                        session_orange_used = session_orange_used + scrips_to_use
+                        TotalOrangeScripsUsed = TotalOrangeScripsUsed + scrips_to_use
+                    elseif scrip_type == 33914 then -- 紫票
+                        session_purple_used = session_purple_used + scrips_to_use
+                        TotalPurpleScripsUsed = TotalPurpleScripsUsed + scrips_to_use
+                    end
                 end
+
+                -- 更新剩余需要兑换的物品数量
+                total_items_to_buy = total_items_to_buy - items_to_buy
+
             end
         else
             DebugLog("票据不足，无法兑换")
@@ -803,7 +992,9 @@ function ScripExchange()
         ClearTarget()
         yield("/wait " .. IntervalRate)
     end
+    return true
 end
+
 
 function PathToScrip()
     DebugLog("前往票据兑换地点: 游末邦")
@@ -894,7 +1085,12 @@ function StopFishing()
     if Svc.Condition[6] or Svc.Condition[42] or Svc.Condition[27] or Svc.Condition[51] then
         DebugLog("等待下次上钩后停止")
         yield("/echo 下次上钩后停止钓鱼")
-        repeat  
+        local startTime = os.time()
+        repeat
+            if os.time() - startTime > 60 then
+                yield("/e 超时1分钟自动取消")
+                break
+            end
             yield("/wait " .. IntervalRate)
         until Svc.Condition[42] -- 42 = Fishing condition
         
@@ -918,8 +1114,10 @@ end
 function ContinueFishing()
     DebugLog("继续钓鱼 - 步骤1: 检查区域")
     
+    local currentZone = GetCurrentFishingZone()
+    
     -- 如果不在钓鱼区域，尝试传送
-    if not IsInZone(FishingZoneID) then
+    if not IsInZone(currentZone.zoneId) then
         DebugLog("不在钓鱼区域，尝试传送")
         
         -- 等待直到可以传送
@@ -928,7 +1126,7 @@ function ContinueFishing()
         end
         
         DebugLog("执行传送")
-        yield("/tp " .. FishingAetheryte)
+        yield("/tp " .. currentZone.aetheryte)
         
         -- 等待传送完成
         local timeout_start = os.clock()
@@ -936,17 +1134,17 @@ function ContinueFishing()
             yield("/wait " .. IntervalRate * 5)
             if os.clock() - timeout_start > 30 then -- 30秒超时
                 DebugLog("传送超时，重新尝试")
-                yield("/tp " .. FishingAetheryte)
+                yield("/tp " .. currentZone.aetheryte)
                 timeout_start = os.clock() -- 重置超时计时器
             end
-        until IsInZone(FishingZoneID) and 
+        until IsInZone(currentZone.zoneId) and 
               not Svc.Condition[27] and  -- 27 = Casting condition
               not Svc.Condition[45] and  -- 45 = BetweenAreas condition
               not Svc.Condition[51]      -- 51 = Occupied condition
     end
     
     DebugLog("继续钓鱼 - 步骤2: 检查距离")
-    local distance = GetDistanceToPoint(UnmountPosition.x, UnmountPosition.y, UnmountPosition.z)
+    local distance = GetDistanceToPoint(currentZone.unmountPos.x, currentZone.unmountPos.y, currentZone.unmountPos.z)
     DebugLog("距离下坐骑位置: " .. distance)
     
     if distance > 20 then
@@ -971,12 +1169,21 @@ function ContinueFishing()
             end
             
             -- 导航前往下坐骑位置
-            DebugLog("导航前往下坐骑位置")
-            IPC.vnavmesh.PathfindAndMoveTo(Vector3(UnmountPosition.x, UnmountPosition.y, UnmountPosition.z), true)
-            
+            while not IPC.vnavmesh.IsRunning() do
+                DebugLog("路径计算器未运行，初始化导航")
+                IPC.vnavmesh.PathfindAndMoveTo(Vector3(currentZone.unmountPos.x, currentZone.unmountPos.y, currentZone.unmountPos.z), true)
+                
+                if os.clock() - timeout_start > 30 then
+                    DebugLog("错误: 导航初始化超时30秒")
+                    break
+                end
+                yield("/wait 1")
+            end
+            DebugLog("路径计算器已启动")
+                yield("/wait 1")
             -- 等待导航完成且距离小于1
             local timeout_start = os.clock()
-            while IPC.vnavmesh.IsRunning() or GetDistanceToPoint(UnmountPosition.x, UnmountPosition.y, UnmountPosition.z) > 1 do
+            while IPC.vnavmesh.IsRunning() or GetDistanceToPoint(currentZone.unmountPos.x, currentZone.unmountPos.y, currentZone.unmountPos.z) > 1 do
                 yield("/wait " .. IntervalRate)
                 if os.clock() - timeout_start > 60 then -- 60秒超时
                     DebugLog("导航超时，停止导航")
@@ -996,7 +1203,7 @@ function ContinueFishing()
     yield("/wait " .. IntervalRate * 2)
     
     DebugLog("继续钓鱼 - 步骤4: 导航至钓鱼位置")
-    local fishing_distance = GetDistanceToPoint(FishingPosition.x, FishingPosition.y, FishingPosition.z)
+    local fishing_distance = GetDistanceToPoint(currentZone.fishingPos.x, currentZone.fishingPos.y, currentZone.fishingPos.z)
     if fishing_distance > 2 then
         DebugLog("距离钓鱼位置: " .. fishing_distance)
         
@@ -1011,11 +1218,11 @@ function ContinueFishing()
         end
         
         if IPC.vnavmesh.IsReady() then
-            IPC.vnavmesh.PathfindAndMoveTo(Vector3(FishingPosition.x, FishingPosition.y, FishingPosition.z), false)
+            IPC.vnavmesh.PathfindAndMoveTo(Vector3(currentZone.fishingPos.x, currentZone.fishingPos.y, currentZone.fishingPos.z), false)
             
             -- 等待导航完成且距离小于1
             local timeout_start = os.clock()
-            while IPC.vnavmesh.IsRunning() or GetDistanceToPoint(FishingPosition.x, FishingPosition.y, FishingPosition.z) > 1 do
+            while IPC.vnavmesh.IsRunning() or GetDistanceToPoint(currentZone.fishingPos.x, currentZone.fishingPos.y, currentZone.fishingPos.z) > 1 do
                 yield("/wait " .. IntervalRate)
                 if os.clock() - timeout_start > 30 then -- 30秒超时
                     DebugLog("导航到钓鱼位置超时，停止导航")
@@ -1028,8 +1235,18 @@ function ContinueFishing()
         DebugLog("已经在钓鱼位置附近")
     end
     
-    DebugLog("继续钓鱼 - 步骤5: 开始钓鱼")
-    yield(StartFishingCommand1)
+    DebugLog("继续钓鱼 - 步骤5: 检查并更换鱼饵")
+    if not CheckAndChangeBait() then
+        StopMain = true
+        return
+    end
+    
+    DebugLog("继续钓鱼 - 步骤6: 开始钓鱼")
+    if type(StartFishingCommand1) == "function" then
+        yield(StartFishingCommand1())
+    else
+        yield(StartFishingCommand1)
+    end
     yield("/wait " .. IntervalRate)
     yield(StartFishingCommand2)
     DebugLog("继续钓鱼 - 完成")
@@ -1047,26 +1264,34 @@ function Main()
     local i_count = GetInventoryFreeSlotCount()
     DebugLog("当前背包空格: " .. i_count)
     
-    -- 等待直到背包空间不足或需要修理
+    -- 等待直到背包空间不足或需要修理或需要更换钓场
     while i_count >= NumInventoryFreeSlotThreshold do
-    yield("/wait " .. IntervalRate * 200)
-    
-    -- 检查鱼饵数量
-    if GetItemCount(FishingBaitId) == 0 then
-        yield("/echo 鱼饵数量为0，脚本停止")
-        StopMain = true
-        return
+        yield("/wait " .. IntervalRate * 200)
+        local currentZone = GetCurrentFishingZone()
+        
+        -- 检查鱼饵数量
+        local currentBaitId = GetCurrentBaitId()
+        if GetItemCount(currentBaitId) == 0 then
+            yield("/echo 鱼饵数量为0，脚本停止")
+            StopMain = true
+            return
+        end
+        
+        -- 检查是否需要修理或精炼
+        if NeedsRepair(RepairAmount) then
+            break
+        end
+        if CanExtractMateria() then
+            break
+        end
+        if not IsInZone(currentZone.zoneId) then
+            yield("/echo 需要更换钓场")
+            break
+        end
+        
+        i_count = GetInventoryFreeSlotCount()
+        DebugLog("检查背包空格: " .. i_count)
     end
-    -- 检查是否需要修理或精炼
-    if NeedsRepair(RepairAmount) then
-        break
-    end
-    if CanExtractMateria() then
-        break
-    end
-    i_count = GetInventoryFreeSlotCount()
-    DebugLog("检查背包空格: " .. i_count)
-end
 
     -- 等待完成最后的钓鱼状态
     if Svc.Condition[6] or Svc.Condition[42] then
@@ -1142,6 +1367,18 @@ end
 DebugLog("脚本启动")
 yield("/echo 开始自动钓收藏品")
 
+-- 显示当前ET时间
+local currentHour, currentMinute = GetETHourMinute()
+yield("/echo [INFO] 当前艾欧泽亚时间: " .. string.format("%02d:%02d", currentHour, currentMinute))
+
+-- 显示ET时间切换功能状态
+if EnableETTimeSwitch  then
+    yield("/echo [INFO] ET时间切换功能已启用")
+    yield("/echo [INFO] 时间范围: " .. string.format("%02d:%02d - %02d:%02d", ETStartHour, ETStartMinute, ETEndHour, ETEndMinute))
+else
+    yield("/echo [INFO] ET时间切换功能已禁用，始终使用钓场一")
+end
+
 -- 添加错误处理
 local success, err = pcall(function()
     if CheckPlugins() then
@@ -1149,11 +1386,6 @@ local success, err = pcall(function()
         
         -- 检查并切换到捕鱼人职业
         if not CheckAndSwitchToFisher() then
-            return
-        end
-        
-        -- 检查并更换鱼饵
-        if not CheckAndChangeBait() then
             return
         end
         
@@ -1195,5 +1427,3 @@ if not success then
     DebugLog("脚本执行出错: " .. tostring(err))
     yield("/echo 脚本执行出错: " .. tostring(err))
 end
-
-
