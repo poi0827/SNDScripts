@@ -1180,6 +1180,7 @@ function ContinueFishing()
                 yield("/wait 1")
             end
             DebugLog("路径计算器已启动")
+
                 yield("/wait 1")
             -- 等待导航完成且距离小于1
             local timeout_start = os.clock()
@@ -1339,7 +1340,7 @@ end
 -- 插件检查函数
 function CheckPlugins()
     DebugLog("开始检查插件")
-    local requiredPlugins = {"Lifestream", "vnavmesh", "TeleporterPlugin", "PandorasBox"}
+    local requiredPlugins = {"Lifestream", "vnavmesh", "TeleporterPlugin"}
     local allPluginsAvailable = true
     
     for _, plugin in ipairs(requiredPlugins) do
