@@ -1267,7 +1267,7 @@ function Main()
     
     -- 等待直到背包空间不足或需要修理或需要更换钓场
     while i_count >= NumInventoryFreeSlotThreshold do
-        yield("/wait " .. IntervalRate * 200)
+        yield("/wait " .. IntervalRate * 50) --10秒检测一次
         local currentZone = GetCurrentFishingZone()
         
         -- 检查鱼饵数量
