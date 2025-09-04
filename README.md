@@ -1,8 +1,10 @@
 author: Ahernika (原版作者) || poi0827 && deepseek (迁移至新版SND)
+
 version: 1.2.1
+
 description: >
   FisherAutoScrips：https://github.com/poi0827/SNDScripts/edit/main/FisherAutoScrips.lua 
-
+  
   注意事项：
 
   ①如果需要自动吃药的话请安装潘多拉
