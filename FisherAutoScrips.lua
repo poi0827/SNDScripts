@@ -304,10 +304,6 @@ end
 
 -- 判断是否在指定的ET时间范围内
 function IsInETTimeRange()
-    if  not EnableETTimeSwitch then
-        DebugLog("ET时间切换功能已禁用，默认使用钓场一")
-        return true
-    end
     
     local currentHour, currentMinute = GetETHourMinute()
     local currentTotalMinutes = currentHour * 60 + currentMinute
@@ -329,26 +325,38 @@ end
 
 -- 根据ET时间判断当前应该使用哪个钓场
 function GetCurrentFishingZone()
-    if not IsInETTimeRange() then
-        DebugLog("当前ET时间不在范围内，使用钓场一")
+    if  not EnableETTimeSwitch then
+        DebugLog("ET时间切换功能已禁用，默认使用钓场一")
         return {
-            aetheryte = FishingAetheryte1,
-            zoneId = FishingZoneID1,
-            unmountPos = UnmountPosition1,
-            fishingPos = FishingPosition1,
-            targetFish = TargetFish1,
-            baitId = FishingBaitId1
-        }
+                aetheryte = FishingAetheryte1,
+                zoneId = FishingZoneID1,
+                unmountPos = UnmountPosition1,
+                fishingPos = FishingPosition1,
+                targetFish = TargetFish1,
+                baitId = FishingBaitId1
+            }
     else
-        DebugLog("当前ET时间在范围内，使用钓场二")
-        return {
-            aetheryte = FishingAetheryte2,
-            zoneId = FishingZoneID2,
-            unmountPos = UnmountPosition2,
-            fishingPos = FishingPosition2,
-            targetFish = TargetFish2,
-            baitId = FishingBaitId2
-        }
+        if not IsInETTimeRange() then
+            DebugLog("当前ET时间不在范围内，使用钓场一")
+            return {
+                aetheryte = FishingAetheryte1,
+                zoneId = FishingZoneID1,
+                unmountPos = UnmountPosition1,
+                fishingPos = FishingPosition1,
+                targetFish = TargetFish1,
+                baitId = FishingBaitId1
+            }
+        else
+            DebugLog("当前ET时间在范围内，使用钓场二")
+            return {
+                aetheryte = FishingAetheryte2,
+                zoneId = FishingZoneID2,
+                unmountPos = UnmountPosition2,
+                fishingPos = FishingPosition2,
+                targetFish = TargetFish2,
+                baitId = FishingBaitId2
+            }
+        end
     end
 end
 
