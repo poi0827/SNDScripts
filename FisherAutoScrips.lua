@@ -986,9 +986,6 @@ function ScripExchange()
 
     -- 输出本次兑换使用的票据数量
     if session_orange_used > 0 or session_purple_used > 0 then
-        DebugLog("本次兑换使用: " .. session_orange_used .. " 橙票, " .. session_purple_used .. " 紫票")
-        DebugLog("累计使用: " .. TotalOrangeScripsUsed .. " 橙票, " .. TotalPurpleScripsUsed .. " 紫票")
-        
         yield("/echo [票据统计] 本次兑换使用: " .. session_orange_used .. " 橙票, " .. session_purple_used .. " 紫票")
         yield("/echo [票据统计] 累计使用: " .. TotalOrangeScripsUsed .. " 橙票, " .. TotalPurpleScripsUsed .. " 紫票")
     else
@@ -1342,7 +1339,14 @@ end
 -- 插件检查函数
 function CheckPlugins()
     DebugLog("开始检查插件")
-    local requiredPlugins = {"Lifestream", "vnavmesh", "TeleporterPlugin"}
+    -- 基础必需插件列表
+    local requiredPlugins = {"Lifestream", "vnavmesh", "TeleporterPlugin", "DailyRoutines"}
+    
+    -- 如果MedicineToUse不为空，则添加pandorasbox到检查列表
+    if MedicineToUse ~= nil and MedicineToUse ~= "" then
+        table.insert(requiredPlugins, "PandorasBox")
+    end
+    
     local allPluginsAvailable = true
     
     for _, plugin in ipairs(requiredPlugins) do
@@ -1357,7 +1361,6 @@ function CheckPlugins()
         
         if not found then
             yield("/echo 请安装插件: " .. plugin)
-            DebugLog("缺少插件: " .. plugin)
             allPluginsAvailable = false
         end
     end
