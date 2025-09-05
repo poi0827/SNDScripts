@@ -625,13 +625,10 @@ function Crafting()
             return
         elseif not  AtHome  and (HomeCommand == "Home" or HomeCommand == "fc") then
             DebugLog("Moving to Home/fc")
-            while Svc.ClientState.TerritoryType ~= 340 do
-                IPC.Lifestream.ExecuteCommand(HomeCommand)
-                while IPC.Lifestream.IsBusy() do
-                    DebugLog("Waiting for Lifestream to finish")
-                    yield("/wait 1")
-                end
-                yield("/wait 10")
+            IPC.Lifestream.ExecuteCommand(HomeCommand)
+            while IPC.Lifestream.IsBusy() do
+                DebugLog("Waiting for Lifestream to finish")
+                yield("/wait 1")
             end
             AtHome = true
             return
