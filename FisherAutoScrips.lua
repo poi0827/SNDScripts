@@ -178,7 +178,10 @@ import("System.Numerics")
 -- 票据兑换设置
 ExchangeItemTable = {
     { 4, 8, 6, 1000, 41785 }, -- 橙票用于兑换 (默认为犎牛角笛的交换票据)
-    { 4, 1, 0, 20, 33914 },   -- 紫票用于兑换 (默认为高级强心剂)
+    { 4, 6, 0, 5, 33914 },   -- 紫票用于兑换 (默认为高级强心剂)
+    --4 6 0 5 33914 为蜻蜓 
+    --4 3 3 1 33914 为残暴水蛭
+    --4 1 0 20 33914 为高级强心剂
 }
 
 CollectibleItemTable = { -- 用于提交的收藏品列表
@@ -189,6 +192,7 @@ CollectibleItemTable = { -- 用于提交的收藏品列表
     { 87, 12828, 10, 33914 }, -- 落雷鳗
     --格式为{ 收藏品在提交界面所在行数 , 物品id , 提交职业（捕鱼人为10）, 票据id（橙票为41875，紫票为33914） }
 }
+
 
 -- 获取配置
 FishingAddon = tonumber(Config.Get("FishingAddon")) or 0
@@ -1433,5 +1437,6 @@ if not success then
     DebugLog("脚本执行出错: " .. tostring(err))
     yield("/echo 脚本执行出错: " .. tostring(err))
 end
+
 
 
