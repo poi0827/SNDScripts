@@ -3,7 +3,7 @@
 author: poi0827
 version: 1.0.0
 description: >
-  此脚本基于钓鱼橙票脚本修改，在钓灵砂鱼的基础上实现了自动修理精炼精选。
+  此脚本基于钓鱼橙票脚本修改，在钓灵砂鱼的同时实现了自动修理精炼精选。
   
   作者修改的其他脚本：https://github.com/poi0827/SNDScripts/
 
@@ -1207,4 +1207,5 @@ end)
 if not success then
     DebugLog("脚本执行出错: " .. tostring(err))
     yield("/echo 脚本执行出错: " .. tostring(err))
+
 end
