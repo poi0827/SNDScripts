@@ -1,9 +1,11 @@
 --[=====[
 [[SND Metadata]]
 author: Ahernika (原版作者) || poi0827 && deepseek (迁移至新版SND)
-version: 1.2.1
+version: 1.3.0
 description: >
   FisherAutoScrips：https://github.com/poi0827/SNDScripts/blob/main/FisherAutoScrips.lua
+
+  v1.3.0对主函数进行了全面重构，引入了状态机，提升了脚本的稳定性。
 
   注意事项：
 
@@ -175,25 +177,6 @@ configs:
 
 import("System.Numerics")
 
--- 票据兑换设置
-ExchangeItemTable = {
-    { 4, 8, 6, 1000, 41785 }, -- 橙票用于兑换 (默认为犎牛角笛的交换票据)
-    { 4, 6, 0, 5, 33914 },   -- 紫票用于兑换 (默认为高级强心剂)
-    --4 6 0 5 33914 为蜻蜓 
-    --4 3 3 1 33914 为残暴水蛭
-    --4 1 0 20 33914 为高级强心剂
-}
-
-CollectibleItemTable = { -- 用于提交的收藏品列表
-    -- 橙票收藏品
-    { 6, 43761, 10, 41785 }, -- 佐戈秃鹰
-    -- 紫票收藏品
-    { 28, 36473, 10, 33914 }, -- 灵岩之剑
-    { 87, 12828, 10, 33914 }, -- 落雷鳗
-    --格式为{ 收藏品在提交界面所在行数 , 物品id , 提交职业（捕鱼人为10）, 票据id（橙票为41875，紫票为33914） }
-}
-
-
 -- 获取配置
 FishingAddon = tonumber(Config.Get("FishingAddon")) or 0
 
@@ -265,6 +248,24 @@ else
     StopFishingCommand2 = "/ac 中断"
 end
 
+-- 票据兑换设置
+ExchangeItemTable = {
+    { 4, 8, 6, 1000, 41785 }, -- 橙票用于兑换 (默认为犎牛角笛的交换票据)
+    { 4, 6, 0, 5, 33914 },   -- 紫票用于兑换 (默认为高级强心剂)
+    --4 6 0 5 33914 为蜻蜓 
+    --4 3 3 1 33914 为残暴水蛭
+    --4 1 0 20 33914 为高级强心剂
+}
+
+CollectibleItemTable = { -- 用于提交的收藏品列表
+    -- 橙票收藏品
+    { 6, 43761, 10, 41785 }, -- 佐戈秃鹰
+    -- 紫票收藏品
+    { 28, 36473, 10, 33914 }, -- 灵岩之剑
+    { 87, 12828, 10, 33914 }, -- 落雷鳗
+    --格式为{ 收藏品在提交界面所在行数 , 物品id , 提交职业（捕鱼人为10）, 票据id（橙票为41875，紫票为33914） }
+}
+
 -- 票据使用统计
 TotalOrangeScripsUsed = 0
 TotalPurpleScripsUsed = 0
@@ -272,6 +273,23 @@ TotalPurpleScripsUsed = 0
 MsgDelay = 10
 TimeoutThreshold = 10
 StopMain = false
+
+-- 定义状态机的状态
+local States = {
+    INIT = "INIT",
+    CHECK_PLUGINS = "CHECK_PLUGINS",
+    CHECK_JOB = "CHECK_JOB",
+    USE_MEDICINE = "USE_MEDICINE",
+    CHECK_INVENTORY = "CHECK_INVENTORY",
+    TRAVEL_TO_FISHING = "TRAVEL_TO_FISHING",
+    FISHING = "FISHING",
+    STOP_FISHING = "STOP_FISHING",
+    REPAIR_EXTRACT = "REPAIR_EXTRACT",
+    TRAVEL_TO_EXCHANGE = "TRAVEL_TO_EXCHANGE",
+    EXCHANGE = "EXCHANGE",
+    ERROR = "ERROR",
+    COMPLETED = "COMPLETED"
+}
 
 function try(try_catch)
     local status, result = pcall(try_catch[1])
@@ -1262,84 +1280,6 @@ function ContinueFishing()
     DebugLog("继续钓鱼 - 完成")
 end
 
-function Main()
-    DebugLog("主循环开始")
-    
-    -- 检查鱼饵数量
-    if not CheckAndChangeBait() then
-        StopMain = true
-        return
-    end
-    
-    local i_count = GetInventoryFreeSlotCount()
-    DebugLog("当前背包空格: " .. i_count)
-    
-    -- 等待直到背包空间不足或需要修理或需要更换钓场
-    while i_count >= NumInventoryFreeSlotThreshold do
-        yield("/wait " .. IntervalRate * 50) --10秒检测一次
-        local currentZone = GetCurrentFishingZone()
-        
-        -- 检查鱼饵数量
-        local currentBaitId = GetCurrentBaitId()
-        if GetItemCount(currentBaitId) == 0 then
-            yield("/echo 鱼饵数量为0，脚本停止")
-            StopMain = true
-            return
-        end
-        
-        -- 检查是否需要修理或精炼
-        if NeedsRepair(RepairAmount) then
-            break
-        end
-        if CanExtractMateria() then
-            break
-        end
-        if not IsInZone(currentZone.zoneId) then
-            yield("/echo 需要更换钓场")
-            break
-        end
-        
-        i_count = GetInventoryFreeSlotCount()
-        DebugLog("检查背包空格: " .. i_count)
-    end
-
-    -- 等待完成最后的钓鱼状态
-    StopFishing()
-    yield("/echo 正在检查食药, 精制魔晶石, 修理装备并提交收藏品")
-    
-    yield("/wait " .. IntervalRate * 10)
-
-    -- 现场任务
-    yield("/wait " .. IntervalRate * 10)
-    Dismount()
-    yield("/wait " .. IntervalRate * 10)
-    UseMedicine()
-    yield("/wait " .. IntervalRate * 15)
-
-    if NeedsRepair(RepairAmount) then
-        Repair()
-    end
-
-    if CanExtractMateria() then
-        ExtractMateria()
-    end
-
-    i_count = GetInventoryFreeSlotCount()
-    DebugLog("处理后背包空格: " .. i_count)
-    
-    if i_count < NumInventoryFreeSlotThreshold then
-        DebugLog("背包空间不足，前往兑换")
-        yield("/echo 正在前往收藏品交易位置")
-        CollectableAppraiserScripExchange()
-    else
-        DebugLog("背包空间充足，不需要兑换")
-    end
-    
-    yield("/wait " .. IntervalRate * 20)
-    yield("/echo 继续钓鱼")
-    ContinueFishing()
-end
-
 -- 插件检查函数
 function CheckPlugins()
     DebugLog("开始检查插件")
@@ -1373,70 +1313,303 @@ function CheckPlugins()
     return allPluginsAvailable
 end
 
--- 脚本入口点
-DebugLog("脚本启动")
-yield("/echo 开始自动钓收藏品")
+-- 状态机类
+FisherStateMachine = {}
+FisherStateMachine.__index = FisherStateMachine
 
--- 显示当前ET时间
-local currentHour, currentMinute = GetETHourMinute()
-yield("/echo [INFO] 当前艾欧泽亚时间: " .. string.format("%02d:%02d", currentHour, currentMinute))
-
--- 显示ET时间切换功能状态
-if EnableETTimeSwitch  then
-    yield("/echo [INFO] ET时间切换功能已启用")
-    yield("/echo [INFO] 时间范围: " .. string.format("%02d:%02d - %02d:%02d", ETStartHour, ETStartMinute, ETEndHour, ETEndMinute))
-else
-    yield("/echo [INFO] ET时间切换功能已禁用，始终使用钓场一")
+function FisherStateMachine.new()
+    local self = setmetatable({}, FisherStateMachine)
+    self:Reset()
+    return self
 end
 
--- 添加错误处理
-local success, err = pcall(function()
-    if CheckPlugins() then
-        DebugLog("所有插件已安装")
-        
-        -- 检查并切换到捕鱼人职业
-        if not CheckAndSwitchToFisher() then
-            return
+function FisherStateMachine:Reset()
+    self.state = States.INIT
+    self.previousState = nil
+    self.stateStartTime = os.clock()
+    self.stateTimeout = 300 -- 默认5分钟超时
+    self.attempts = 0
+    self.maxAttempts = 3
+    self.stopRequested = false
+    self.errorMessage = ""
+    self.lastCheckTime = 0
+    self.checkInterval = 10 -- 检查间隔（秒）
+end
+
+function FisherStateMachine:TransitionTo(newState)
+    DebugLog("状态转换: " .. tostring(self.state) .. " -> " .. tostring(newState))
+    self.previousState = self.state
+    self.state = newState
+    self.stateStartTime = os.clock()
+    self.attempts = 0
+end
+
+function FisherStateMachine:HandleError(message)
+    self.errorMessage = message
+    DebugLog("错误: " .. message)
+    self:TransitionTo(States.ERROR)
+end
+
+function FisherStateMachine:ShouldTimeout()
+    return os.clock() - self.stateStartTime > self.stateTimeout
+end
+
+function FisherStateMachine:Execute()
+    if self.stopRequested then
+        DebugLog("状态机已停止")
+        return false
+    end
+
+    -- 状态超时处理
+    if self:ShouldTimeout() then
+        self:HandleError("状态 " .. self.state .. " 超时")
+        return true
+    end
+
+    -- 执行当前状态的逻辑
+    local continue = true
+    local success, err = pcall(function()
+        if self.state == States.INIT then
+            continue = self:State_INIT()
+        elseif self.state == States.CHECK_PLUGINS then
+            continue = self:State_CHECK_PLUGINS()
+        elseif self.state == States.CHECK_JOB then
+            continue = self:State_CHECK_JOB()
+        elseif self.state == States.USE_MEDICINE then
+            continue = self:State_USE_MEDICINE()
+        elseif self.state == States.CHECK_INVENTORY then
+            continue = self:State_CHECK_INVENTORY()
+        elseif self.state == States.TRAVEL_TO_FISHING then
+            continue = self:State_TRAVEL_TO_FISHING()
+        elseif self.state == States.FISHING then
+            continue = self:State_FISHING()
+        elseif self.state == States.STOP_FISHING then
+            continue = self:State_STOP_FISHING()
+        elseif self.state == States.REPAIR_EXTRACT then
+            continue = self:State_REPAIR_EXTRACT()
+        elseif self.state == States.TRAVEL_TO_EXCHANGE then
+            continue = self:State_TRAVEL_TO_EXCHANGE()
+        elseif self.state == States.EXCHANGE then
+            continue = self:State_EXCHANGE()
+        elseif self.state == States.ERROR then
+            continue = self:State_ERROR()
+        elseif self.state == States.COMPLETED then
+            continue = self:State_COMPLETED()
         end
-        
+    end)
+
+    if not success then
+        self:HandleError("状态 " .. self.state .. " 执行错误: " .. tostring(err))
+    end
+
+    return continue
+end
+
+-- 各个状态的处理函数
+function FisherStateMachine:State_INIT()
+    DebugLog("初始化状态")
+    local currentHour, currentMinute = GetETHourMinute()
+    yield("/echo [INFO] 当前艾欧泽亚时间: " .. string.format("%02d:%02d", currentHour, currentMinute))
+    
+    if EnableETTimeSwitch then
+        yield("/echo [INFO] ET时间切换功能已启用")
+        yield("/echo [INFO] 时间范围: " .. string.format("%02d:%02d - %02d:%02d", ETStartHour, ETStartMinute, ETEndHour, ETEndMinute))
+    else
+        yield("/echo [INFO] ET时间切换功能已禁用，始终使用钓场一")
+    end
+    
+    self:TransitionTo(States.CHECK_PLUGINS)
+    return true
+end
+
+function FisherStateMachine:State_CHECK_PLUGINS()
+    DebugLog("检查插件状态")
+    if CheckPlugins() then
+        self:TransitionTo(States.CHECK_JOB)
+    else
+        self:HandleError("插件检查失败，请安装所需插件")
+    end
+    return true
+end
+
+function FisherStateMachine:State_CHECK_JOB()
+    DebugLog("检查职业状态")
+    if CheckAndSwitchToFisher() then
         Dismount()
         yield("/wait " .. IntervalRate * 10)
+        self:TransitionTo(States.USE_MEDICINE)
+    else
+        self:HandleError("切换到捕鱼人职业失败")
+    end
+    return true
+end
+
+function FisherStateMachine:State_USE_MEDICINE()
+    DebugLog("使用药品状态")
+    UseMedicine()
+    yield("/wait " .. IntervalRate * 10)
+    self:TransitionTo(States.CHECK_INVENTORY)
+    return true
+end
+
+function FisherStateMachine:State_CHECK_INVENTORY()
+    DebugLog("检查背包状态")
+    local i_count = GetInventoryFreeSlotCount()
+    DebugLog("初始背包空格: " .. i_count)
+    
+    if i_count < tonumber(NumInventoryFreeSlotThreshold) and CanTurnin() then
+        DebugLog("需要兑换，前往兑换状态")
+        self:TransitionTo(States.TRAVEL_TO_EXCHANGE)
+    else
+        DebugLog("不需要兑换，前往钓鱼状态")
+        self:TransitionTo(States.TRAVEL_TO_FISHING)
+    end
+    return true
+end
+
+function FisherStateMachine:State_TRAVEL_TO_FISHING()
+    DebugLog("前往钓鱼点状态")
+    ContinueFishing()
+    self:TransitionTo(States.FISHING)
+    return true
+end
+
+function FisherStateMachine:State_FISHING()
+    DebugLog("钓鱼状态")
+    
+    -- 定期检查条件（每10秒检查一次）
+    local currentTime = os.clock()
+    if currentTime - self.lastCheckTime >= self.checkInterval then
+        self.lastCheckTime = currentTime
         
-        UseMedicine()
-        yield("/wait " .. IntervalRate * 10)
+        -- 检查鱼饵数量
+        if not CheckAndChangeBait() then
+            self:HandleError("鱼饵数量不足或更换失败")
+            return true
+        end
+        
+        -- 检查是否需要修理或精炼
+        if NeedsRepair(RepairAmount) or CanExtractMateria() then
+            DebugLog("需要修理或精炼，停止钓鱼")
+            self:TransitionTo(States.STOP_FISHING)
+            return true
+        end
         
         local i_count = GetInventoryFreeSlotCount()
-        DebugLog("初始背包空格: " .. i_count)
+        DebugLog("当前背包空格: " .. i_count)
         
-        if i_count < tonumber(NumInventoryFreeSlotThreshold) and CanTurnin() then
-            DebugLog("初始检查需要兑换")
-            yield("/echo 前往提交收藏品并兑换")
-            CollectableAppraiserScripExchange()
-            yield("/wait " .. IntervalRate * 30)
-        else
-            DebugLog("初始检查不需要兑换")
+        -- 检查是否需要停止钓鱼（背包满）
+        if i_count < NumInventoryFreeSlotThreshold then
+            DebugLog("背包已满，停止钓鱼")
+            self:TransitionTo(States.STOP_FISHING)
+            return true
         end
-
-        ContinueFishing()
         
-        -- 主循环
-        DebugLog("进入主循环")
-        while not StopMain do
-            yield("/echo 开始钓鱼")
-            yield("/wait " .. IntervalRate)
-            Main()
-            yield("/wait " .. IntervalRate)
+        -- 检查是否在正确的区域
+        local currentZone = GetCurrentFishingZone()
+        if not IsInZone(currentZone.zoneId) then
+            DebugLog("不在钓鱼区域，停止钓鱼")
+            self:TransitionTo(States.STOP_FISHING)
+            return true
         end
-    else
-        DebugLog("插件检查失败")
-        yield("/echo 请安装对应插件")
     end
-end)
-
-if not success then
-    DebugLog("脚本执行出错: " .. tostring(err))
-    yield("/echo 脚本执行出错: " .. tostring(err))
+    
+    -- 保持钓鱼状态
+    yield("/wait " .. IntervalRate)
+    return true
 end
+
+function FisherStateMachine:State_STOP_FISHING()
+    DebugLog("停止钓鱼状态")
+    StopFishing()
+    yield("/wait " .. IntervalRate * 10)
+    
+    -- 检查是否需要修理或精炼
+    if NeedsRepair(RepairAmount) or CanExtractMateria() then
+        self:TransitionTo(States.REPAIR_EXTRACT)
+    else
+        self:TransitionTo(States.CHECK_INVENTORY)
+    end
+    return true
+end
+
+function FisherStateMachine:State_REPAIR_EXTRACT()
+    DebugLog("修理和精炼状态")
+    
+    if NeedsRepair(RepairAmount) then
+        Repair()
+        yield("/wait " .. IntervalRate * 10)
+    end
+
+    if CanExtractMateria() then
+        ExtractMateria()
+        yield("/wait " .. IntervalRate * 10)
+    end
+    
+    self:TransitionTo(States.CHECK_INVENTORY)
+    return true
+end
+
+function FisherStateMachine:State_TRAVEL_TO_EXCHANGE()
+    DebugLog("前往兑换点状态")
+    PathToScrip()
+    yield("/wait " .. IntervalRate * 20)
+    self:TransitionTo(States.EXCHANGE)
+    return true
+end
+
+function FisherStateMachine:State_EXCHANGE()
+    DebugLog("兑换状态")
+    
+    -- 执行兑换操作
+    while CanTurnin() do
+        CollectableAppraiser()
+        yield("/wait " .. IntervalRate * 20)
+        ScripExchange()
+        yield("/wait " .. IntervalRate * 20)
+    end
+    
+    yield("/wait " .. IntervalRate * 10)
+    ScripExchange()
+    yield("/wait " .. IntervalRate * 20)
+    
+    self:TransitionTo(States.TRAVEL_TO_FISHING)
+    return true
+end
+
+function FisherStateMachine:State_ERROR()
+    DebugLog("错误状态: " .. self.errorMessage)
+    yield("/echo 错误: " .. self.errorMessage)
+    
+    self.attempts = self.attempts + 1
+    if self.attempts < self.maxAttempts then
+        yield("/wait " .. IntervalRate * 10)
+        yield("/echo 尝试恢复，第 " .. self.attempts .. " 次尝试")
+        self:TransitionTo(self.previousState or States.INIT)
+    else
+        yield("/echo 错误恢复尝试次数过多，停止脚本")
+        self.stopRequested = true
+    end
+    return true
+end
+
+function FisherStateMachine:State_COMPLETED()
+    DebugLog("完成状态")
+    yield("/echo 脚本完成")
+    self.stopRequested = true
+    return false
+end
+
+-- 创建状态机实例
+local stateMachine = FisherStateMachine.new()
+
+-- 主循环
+DebugLog("脚本启动 - 状态机模式") 
+while stateMachine:Execute() do
+    yield("/wait " .. IntervalRate)
+end
+
+yield("/echo 脚本结束")
 
 
 
