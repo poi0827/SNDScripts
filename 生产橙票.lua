@@ -5,7 +5,7 @@ version: 2.0.6
 description: >
   Crafter Scrips - Script for Crafting & Turning In
 
-  个人自用修改版
+  7.3还未测试
   
   添加了进部队房的选项，需要进房子的话要自己在lifestream中设置一下
 
@@ -27,7 +27,7 @@ configs:
     description: Select the crafting class to use for turn-ins and crafting tasks.
     type: string
   ScripColor:
-    default: Orange
+    default: Purple
     description: Type of scrip to use for crafting / purchases (Orange, Purple).
     type: string
   ArtisanListId:
@@ -35,7 +35,7 @@ configs:
     description: Id of Artisan list for crafting all the intermediate materials (eg black star, claro walnut lumber, etc.).
     type: string
   ItemToBuy:
-    default: 高浓缩炼金药
+    default: 石匠研磨剂
     description: Name of the item to purchase using scrips.
     type: string
   HomeCommand:
@@ -165,7 +165,7 @@ end
 -- you have in game.
 ScripExchangeItems = {
     {
-        itemName        = "Mason's Abrasive",
+        itemName        = "石匠研磨剂",
         categoryMenu    = 1,
         subcategoryMenu = 9 + SkystellToolsUnlocked,
         listIndex       = 0,
@@ -174,7 +174,7 @@ ScripExchangeItems = {
     {
         itemName        = "高浓缩炼金药",
         categoryMenu    = 1,
-        subcategoryMenu = 9 + SkystellToolsUnlocked,
+        subcategoryMenu = 10 + SkystellToolsUnlocked,
         listIndex       = 5,
         price           = 125
     },
