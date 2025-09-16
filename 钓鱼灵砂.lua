@@ -1,10 +1,12 @@
 --[=====[
 [[SND Metadata]]
 author: poi0827
-version: 1.1.1
+version: 1.1.3
 description: >
   此脚本基于钓鱼橙票脚本修改，在钓灵砂鱼的基础上实现了自动修理精炼精选
 
+  使用状态机模式重构，增加了错误重试机制，运行更稳定
+  
   作者修改的其他脚本：https://github.com/poi0827/SNDScripts/
 
   注意事项：
@@ -197,7 +199,7 @@ function CheckStateTimeout()
         DebugLog("状态超时: " .. currentState)
         retryCount = retryCount + 1
         
-        if retryCount >= maxRetries then
+        if retryCount >= maxRetries and currentState ~= STATE.FISHING then
             ChangeState(STATE.ERROR)
             return true
         else
@@ -591,8 +593,8 @@ end
 -- 状态机主循环
 function StateMachineLoop()
     if CheckStateTimeout() then
-        yield("/echo 状态机超时，停止脚本")
-        return false
+        yield("/echo 状态机超时，重新尝试")
+        ChangeState(STATE.TELEPORT)
     end
     
     -- 状态处理
