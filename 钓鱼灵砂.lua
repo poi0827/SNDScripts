@@ -1,12 +1,10 @@
 --[=====[
 [[SND Metadata]]
 author: poi0827
-version: 1.1.0
+version: 1.1.1
 description: >
   此脚本基于钓鱼橙票脚本修改，在钓灵砂鱼的基础上实现了自动修理精炼精选
 
-  使用状态机模式重构，更加稳定可靠
-  
   作者修改的其他脚本：https://github.com/poi0827/SNDScripts/
 
   注意事项：
@@ -795,26 +793,26 @@ function StateMachineLoop()
         if Repair() then
             ChangeState(STATE.CHECK_INVENTORY) -- 返回检查其他需求
         else
-            ChangeState(STATE.ERROR)
+            ChangeState(STATE.CHECK_INVENTORY)
         end
         
     elseif currentState == STATE.EXTRACT_MATERIA then
         if ExtractMateria() then
             ChangeState(STATE.CHECK_INVENTORY) -- 返回检查其他需求
         else
-            ChangeState(STATE.ERROR)
+            ChangeState(STATE.CHECK_INVENTORY)
         end
         
     elseif currentState == STATE.AETHERIA then
         if Aetheria() then
             ChangeState(STATE.CHECK_INVENTORY) -- 返回检查其他需求
         else
-            ChangeState(STATE.ERROR)
+           ChangeState(STATE.CHECK_INVENTORY)
         end
         
     elseif currentState == STATE.ERROR then
-        yield("/echo 脚本遇到错误，停止运行")
-        return false
+        yield("/echo 脚本遇到错误,重新尝试")
+        ChangeState(STATE.TELEPORT)
     end
     
     return true
