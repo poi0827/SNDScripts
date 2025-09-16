@@ -199,7 +199,7 @@ function CheckStateTimeout()
         DebugLog("状态超时: " .. currentState)
         retryCount = retryCount + 1
         
-        if retryCount >= maxRetries and currentState ~= STATE.FISHING then
+        if retryCount >= maxRetries and currentState ~= 10 then
             ChangeState(STATE.ERROR)
             return true
         else
