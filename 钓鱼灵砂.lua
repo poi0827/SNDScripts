@@ -542,7 +542,7 @@ function Aetheria()
             
             -- 等待精选完成
             timeout_start = os.clock()
-            while CanAetheria() and os.clock() - timeout_start < 60 do
+            while CanAetheria() do
                 yield("/wait " .. IntervalRate * 5)
             end
             
