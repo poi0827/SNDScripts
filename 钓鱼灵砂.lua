@@ -195,16 +195,18 @@ end
 
 -- 状态超时检查
 function CheckStateTimeout()
-    if os.clock() - stateStartTime > stateTimeout then
-        DebugLog("状态超时: " .. currentState)
-        retryCount = retryCount + 1
+    if currentState ~= STATE.FISHING then   
+        if os.clock() - stateStartTime > stateTimeout then
+            DebugLog("状态超时: " .. currentState)
+            retryCount = retryCount + 1
         
-        if retryCount >= maxRetries and currentState ~= 10 then
-            ChangeState(STATE.ERROR)
-            return true
-        else
+            if retryCount >= maxRetries  then
+                ChangeState(STATE.ERROR)
+                return true
+            else
             DebugLog("重试状态: " .. currentState .. " (" .. retryCount .. "/" .. maxRetries .. ")")
             stateStartTime = os.clock() -- 重置超时计时器
+            end
         end
     end
     return false
@@ -655,7 +657,7 @@ function StateMachineLoop()
         local distance = GetDistanceToPoint(UnmountPosition.x, UnmountPosition.y, UnmountPosition.z)
         DebugLog("距离下坐骑位置: " .. distance)
         
-        if distance <= 1 then
+        if distance <= 11 then
             ChangeState(STATE.NAVIGATE_TO_FISHING)
         else
             if distance > 20 then
@@ -712,10 +714,16 @@ function StateMachineLoop()
         ChangeState(STATE.USE_MEDICINE)  -- 返回后重新使用药品和检查鱼饵
         
     elseif currentState == STATE.USE_MEDICINE then
-        if UseMedicine() then
-            ChangeState(STATE.CHECK_BAIT)
+        IPC.vnavmesh.Stop()--停止可能存在的寻路状态
+        if  Svc.Condition[6] or  Svc.Condition[42] then
+            DebugLog("检测到钓鱼状态，退出钓鱼状态")
+            StopFishing()
         else
-            ChangeState(STATE.CHECK_BAIT) -- 即使药品使用失败也继续
+            if UseMedicine() then
+                ChangeState(STATE.CHECK_BAIT)
+            else
+                ChangeState(STATE.CHECK_BAIT) -- 即使药品使用失败也继续
+            end
         end
         
     elseif currentState == STATE.CHECK_BAIT then
@@ -754,7 +762,7 @@ function StateMachineLoop()
     if freeSlots < NumInventoryFreeSlotThreshold or 
        NeedsRepair(RepairAmount) or 
        CanExtractMateria() then
-        ChangeState(STATE.STOP_FISHING)
+        ChangeState(STATE._FISHINGSTOP)
     else
         -- 检查鱼饵数量
         if GetItemCount(FishingBaitId) == 0 then
