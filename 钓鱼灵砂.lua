@@ -689,7 +689,7 @@ function StateMachineLoop()
         DebugLog("距离钓鱼位置: " .. distance)
         
         if distance <= 1 then
-            ChangeState(STATE.USE_MEDICINE)  -- 移动到钓点后再使用药品
+            ChangeState(STATE.CHECK_INVENTORY)  -- 移动到钓点后检查状态
         else
             Dismount()
             
@@ -736,6 +736,7 @@ function StateMachineLoop()
     elseif currentState == STATE.START_FISHING then
         if StartFishing() then
             ChangeState(STATE.FISHING)
+            reCount = 0
         else
             ChangeState(STATE.ERROR)
         end
@@ -750,9 +751,14 @@ function StateMachineLoop()
     
     -- 检查是否不在钓鱼状态（Condition 6: 钓鱼中，Condition 42: 等待上钩）
     if not Svc.Condition[6] and not Svc.Condition[42] then
-        DebugLog("检测到不在钓鱼状态，重新开始流程")
-        ChangeState(STATE.TELEPORT)
-        return true
+        if reCount < 3 then
+            reCount = reCount + 1
+            yield("/wait " .. IntervalRate * 20) --等待四秒
+        else
+            DebugLog("检测到不在钓鱼状态，重新开始流程")
+            ChangeState(STATE.TELEPORT)
+            return true
+        end
     end
     
     -- 检查是否需要停止钓鱼
