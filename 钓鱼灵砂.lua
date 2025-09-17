@@ -13,7 +13,7 @@ description: >
 
   ①如果需要自动吃药的话请安装潘多拉
 
-  ②请开启DR自动防警惕，不需要填额外文本指令
+  ②请开启DR自动防警惕，空天姬不要勾选自动抛竿，autohook勾选自动抛竿
 
   ③请自行修改钓场点位，避免模型重叠
 
@@ -849,3 +849,4 @@ stateStartTime = os.clock()
 while StateMachineLoop() do
     yield("/wait " .. IntervalRate)
 end
+
