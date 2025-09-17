@@ -1,11 +1,11 @@
 --[=====[
 [[SND Metadata]]
 author: poi0827
-version: 1.1.3
+version: 1.1.4
 description: >
   此脚本基于钓鱼橙票脚本修改，在钓灵砂鱼的基础上实现了自动修理精炼精选
 
-  使用状态机模式重构，增加了错误重试机制，运行更稳定
+  使用状态机模式重构，尝试修复未检测到幻卡对局室的问题
   
   作者修改的其他脚本：https://github.com/poi0827/SNDScripts/
 
@@ -596,7 +596,10 @@ function StateMachineLoop()
         yield("/echo 状态机超时，重新尝试")
         ChangeState(STATE.TELEPORT)
     end
-    
+    if IsInZone(579) then
+        DebugLog("检测到进入幻卡对局室，停止钓鱼")
+        ChangeState(STATE.TRIPLE_TRIAD)
+    end
     -- 状态处理
     if currentState == STATE.INIT then
         DebugLog("脚本初始化")
