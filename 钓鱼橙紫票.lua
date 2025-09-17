@@ -3,7 +3,7 @@
 author: Ahernika (原版作者) || poi0827 && deepseek (迁移至新版SND)
 version: 1.3.0
 description: >
-  FisherAutoScrips：https://github.com/poi0827/SNDScripts/blob/main/FisherAutoScrips.lua
+  FisherAutoScrips：https://github.com/poi0827/SNDScripts/
 
   v1.3.0对主函数进行了全面重构，引入了状态机，提升了脚本的稳定性。
 
@@ -1610,6 +1610,7 @@ while stateMachine:Execute() do
 end
 
 yield("/echo 脚本结束")
+
 
 
 
