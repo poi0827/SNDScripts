@@ -768,7 +768,7 @@ function StateMachineLoop()
     if freeSlots < NumInventoryFreeSlotThreshold or 
        NeedsRepair(RepairAmount) or 
        CanExtractMateria() then
-        ChangeState(STATE._FISHINGSTOP)
+        ChangeState(STATE.STOP_FISHING)
     else
         -- 检查鱼饵数量
         if GetItemCount(FishingBaitId) == 0 then
