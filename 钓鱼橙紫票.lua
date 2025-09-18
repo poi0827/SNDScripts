@@ -1,11 +1,9 @@
 --[=====[
 [[SND Metadata]]
 author: Ahernika (原版作者) || poi0827 && deepseek (迁移至新版SND)
-version: 1.3.0
+version: 1.3.2
 description: >
-  FisherAutoScrips：https://github.com/poi0827/SNDScripts/
-
-  v1.3.0对主函数进行了全面重构，引入了状态机，提升了脚本的稳定性。
+  仓库：https://github.com/poi0827/SNDScripts/
 
   注意事项：
 
@@ -40,27 +38,27 @@ configs:
     description: 钓场一区域ID
     type: string
   UnmountPositionX1:
-    default: -255.00215
+    default:  -146.90034
     description: 钓场一下坐骑位置X坐标
     type: string
   UnmountPositionY1:
-    default: -43.69279
+    default: -26.88073
     description: 钓场一下坐骑位置Y坐标
     type: string
   UnmountPositionZ1:
-    default: 650.05786
+    default: 655.75916
     description: 钓场一下坐骑位置Z坐标
     type: string
   FishingPositionX1:
-    default: -260.50952
+    default:  -151.55988
     description: 钓场一位置X坐标
     type: string
   FishingPositionY1:
-    default: -44.57518
+    default: -27.576021
     description: 钓场一位置Y坐标
     type: string
   FishingPositionZ1:
-    default: 654.30914
+    default: 663.8364
     description: 钓场一位置Z坐标
     type: string
   TargetFish1:
@@ -177,6 +175,27 @@ configs:
 
 import("System.Numerics")
 
+-- 票据兑换设置
+ExchangeItemTable = {
+    { 4, 8, 1, 5, 41785 }, -- 橙票用于兑换 (默认为犎牛角笛的交换票据)
+    { 4, 1, 0, 20, 33914 },   -- 紫票用于兑换 (默认为高级强心剂)
+    --4 6 0 5 33914 蜻蜓 
+    --4 3 3 1 33914 残暴水蛭
+    --4 1 0 20 33914 高级强心剂
+    --4 8 1 5 41875 红蛆
+    --4 8 6 1000 41875 牛票
+    --格式为{ 主分类 , 副分类 , 第n个道具, 票据id（橙票为41875，紫票为33914） } 
+}
+
+CollectibleItemTable = { -- 用于提交的收藏品列表
+    -- 橙票收藏品
+    { 6, 43761, 10, 41785 }, -- 佐戈秃鹰
+    -- 紫票收藏品
+    { 28, 36473, 10, 33914 }, -- 灵岩之剑
+    { 87, 12828, 10, 33914 }, -- 落雷鳗
+    --格式为{ 收藏品在提交界面所在行数 , 物品id , 提交职业（捕鱼人为10）, 票据id（橙票为41875，紫票为33914） }
+}
+
 -- 获取配置
 FishingAddon = tonumber(Config.Get("FishingAddon")) or 0
 
@@ -248,23 +267,6 @@ else
     StopFishingCommand2 = "/ac 中断"
 end
 
--- 票据兑换设置
-ExchangeItemTable = {
-    { 4, 8, 6, 1000, 41785 }, -- 橙票用于兑换 (默认为犎牛角笛的交换票据)
-    { 4, 6, 0, 5, 33914 },   -- 紫票用于兑换 (默认为高级强心剂)
-    --4 6 0 5 33914 为蜻蜓 
-    --4 3 3 1 33914 为残暴水蛭
-    --4 1 0 20 33914 为高级强心剂
-}
-
-CollectibleItemTable = { -- 用于提交的收藏品列表
-    -- 橙票收藏品
-    { 6, 43761, 10, 41785 }, -- 佐戈秃鹰
-    -- 紫票收藏品
-    { 28, 36473, 10, 33914 }, -- 灵岩之剑
-    { 87, 12828, 10, 33914 }, -- 落雷鳗
-    --格式为{ 收藏品在提交界面所在行数 , 物品id , 提交职业（捕鱼人为10）, 票据id（橙票为41875，紫票为33914） }
-}
 
 -- 票据使用统计
 TotalOrangeScripsUsed = 0
@@ -1481,13 +1483,7 @@ function FisherStateMachine:State_FISHING()
     local currentTime = os.clock()
     if currentTime - self.lastCheckTime >= self.checkInterval then
         self.lastCheckTime = currentTime
-        
-        -- 检查鱼饵数量
-        if not CheckAndChangeBait() then
-            self:HandleError("鱼饵数量不足或更换失败")
-            return true
-        end
-        
+                
         -- 检查是否需要修理或精炼
         if NeedsRepair(RepairAmount) or CanExtractMateria() then
             DebugLog("需要修理或精炼，停止钓鱼")
@@ -1610,7 +1606,3 @@ while stateMachine:Execute() do
 end
 
 yield("/echo 脚本结束")
-
-
-
-
