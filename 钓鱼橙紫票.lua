@@ -5,6 +5,8 @@ version: 1.3.2
 description: >
   仓库：https://github.com/poi0827/SNDScripts/
 
+  版本更新：使用状态机重构，加强了稳定性
+
   注意事项：
 
   ①如果需要自动吃药的话请安装潘多拉
@@ -38,27 +40,27 @@ configs:
     description: 钓场一区域ID
     type: string
   UnmountPositionX1:
-    default:  -146.90034
+    default: -255.00215
     description: 钓场一下坐骑位置X坐标
     type: string
   UnmountPositionY1:
-    default: -26.88073
+    default: -43.69279
     description: 钓场一下坐骑位置Y坐标
     type: string
   UnmountPositionZ1:
-    default: 655.75916
+    default: 650.05786
     description: 钓场一下坐骑位置Z坐标
     type: string
   FishingPositionX1:
-    default:  -151.55988
+    default: -260.50952
     description: 钓场一位置X坐标
     type: string
   FishingPositionY1:
-    default: -27.576021
+    default: -44.57518
     description: 钓场一位置Y坐标
     type: string
   FishingPositionZ1:
-    default: 663.8364
+    default: 654.30914
     description: 钓场一位置Z坐标
     type: string
   TargetFish1:
@@ -184,7 +186,7 @@ ExchangeItemTable = {
     --4 1 0 20 33914 高级强心剂
     --4 8 1 5 41875 红蛆
     --4 8 6 1000 41875 牛票
-    --格式为{ 主分类 , 副分类 , 第n个道具, 票据id（橙票为41875，紫票为33914） } 
+    --格式为{ 主分类 , 副分类 , 第n个道具, 单个价格, 票据id（橙票为41875，紫票为33914） } 
 }
 
 CollectibleItemTable = { -- 用于提交的收藏品列表
@@ -1606,3 +1608,4 @@ while stateMachine:Execute() do
 end
 
 yield("/echo 脚本结束")
+
