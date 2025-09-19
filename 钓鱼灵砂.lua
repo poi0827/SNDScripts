@@ -1,107 +1,109 @@
 --[=====[
 [[SND Metadata]]
 author: poi0827
-version: 1.1.4
+version: 1.1.5
 description: >
   此脚本基于钓鱼橙票脚本修改，在钓灵砂鱼的基础上实现了自动修理精炼精选
 
-  使用状态机模式重构，尝试修复未检测到幻卡对局室的问题
-  
+  v1.1.5精简代码
+
+  v1.1.4使用状态机模式重构，尝试修复未检测到幻卡对局室的问题
+
   作者修改的其他脚本：https://github.com/poi0827/SNDScripts/
 
   注意事项：
 
   ①如果需要自动吃药的话请安装潘多拉
 
-  ②请开启DR自动防警惕，空天姬不要勾选自动抛竿，autohook勾选自动抛竿
+  ②请开启DR自动防警惕，不需要填额外文本指令
 
   ③请自行修改钓场点位，避免模型重叠
-
-  ④因为tp插件暂不可用，请自行传送至目标地图再启动脚本
 
 plugin_dependencies:
 - vnavmesh
 - DailyRoutines
+- TeleporterPlugin
 configs:
   FishingAddon:
     default: 1
     description: 选择钓鱼插件，0为Autohook，1为空天姬
-    type: string
+    type: int
   FishingAetheryte:
     default: 哈努聚落
     description: 钓场的以太之光名字
-    type: string
   FishingZoneID:
     default: 1188
     description: 钓场区域ID
-    type: string
+    type: int
   UnmountPositionX:
     default: -3.9108598
     description: 下坐骑位置X坐标
-    type: string
+    type: float
   UnmountPositionY:
     default: 24.658663
     description: 下坐骑位置Y坐标
-    type: string
+    type: float
   UnmountPositionZ:
     default: 27.425825
     description: 下坐骑位置Z坐标
-    type: string
+    type: float
   FishingPositionX:
     default: 3.2094617
     description: 钓鱼位置X坐标
-    type: string
+    type: float
   FishingPositionY:
     default: 25.3077
     description: 钓鱼位置Y坐标
-    type: string
+    type: float
   FishingPositionZ:
     default: 19.545511
     description: 钓鱼位置Z坐标
-    type: string
+    type: float
   TargetFish:
     default: Purple Palate
     description: 目标鱼名称
-    type: string
   CollectibleItemId:
     default: 46249
     description: 目标鱼ID
-    type: string
+    type: int
   FishingBaitId:
     default: 43858
     description: 使用的鱼饵ID
-    type: string
+    type: int
   NumInventoryFreeSlotThreshold:
     default: 5
     description: 当背包剩余空间小于该值时将停止钓鱼并精选灵砂
-    type: string
+    type: int
   DoExtract:
     default: true
     description: 是否自动精炼
-    type: string
+    type: bool
   DoRepair:
     default: true
     description: 是否自动修理
-    type: string
+    type: bool
   MedicineToUse:
     default: 极精炼药
     description: 吃什么药（不想使用请留空）
-    type: string
   RepairAmount:
     default: 50
     description: 修理阈值
-    type: string
+    type: int
   DebugMode:
     default: 1
     description: DEBUG模式
-    type: string
+    type: int
+  IntervalRate:
+    default: 0.2
+    description: 脚本执行间隔速率（秒）
+    type: float
 
 [[End Metadata]]
 --]=====]
 
 import("System.Numerics")
 
--- 状态定义 - 添加TRIPLE_TRIAD状态
+-- 状态定义
 local STATE = {
     INIT = 0,
     CHECK_PLUGINS = 1,
@@ -110,8 +112,8 @@ local STATE = {
     TELEPORT = 4,
     NAVIGATE_TO_UNMOUNT = 5,
     NAVIGATE_TO_FISHING = 6,
-    USE_MEDICINE = 7,        -- 移动到寻路之后
-    CHECK_BAIT = 8,          -- 移动到寻路之后
+    USE_MEDICINE = 7,
+    CHECK_BAIT = 8,
     START_FISHING = 9,
     FISHING = 10,
     STOP_FISHING = 11,
@@ -119,22 +121,20 @@ local STATE = {
     REPAIR = 13,
     EXTRACT_MATERIA = 14,
     AETHERIA = 15,
-    TRIPLE_TRIAD = 16,       -- 新增：幻卡对局室状态
+    TRIPLE_TRIAD = 16,
     ERROR = 99
 }
 
 -- 状态机变量
 local currentState = STATE.INIT
-local lastState = STATE.INIT
 local stateStartTime = 0
-local stateTimeout = 120 -- 状态超时时间（秒）
+local stateTimeout = 120
 local retryCount = 0
 local maxRetries = 3
+local reCount = 0
 
 -- 获取配置
-FishingAddon = tonumber(Config.Get("FishingAddon")) or 0
-
--- 钓场配置
+FishingAddon = tonumber(Config.Get("FishingAddon"))
 FishingAetheryte = Config.Get("FishingAetheryte")
 FishingZoneID = tonumber(Config.Get("FishingZoneID"))
 UnmountPosition = {
@@ -148,11 +148,9 @@ FishingPosition = {
     z = tonumber(Config.Get("FishingPositionZ"))
 }
 TargetFish = Config.Get("TargetFish")
-CollectibleItemId = tonumber(Config.Get("CollectibleItemId")) or 46249
-FishingBaitId = tonumber(Config.Get("FishingBaitId")) or 0
-
--- 通用配置
-IntervalRate = tonumber(Config.Get("IntervalRate")) or 0.2
+CollectibleItemId = tonumber(Config.Get("CollectibleItemId"))
+FishingBaitId = tonumber(Config.Get("FishingBaitId"))
+IntervalRate = tonumber(Config.Get("IntervalRate"))
 NumInventoryFreeSlotThreshold = tonumber(Config.Get("NumInventoryFreeSlotThreshold"))
 DoExtract = Config.Get("DoExtract")
 DoRepair = Config.Get("DoRepair")
@@ -162,7 +160,6 @@ DebugMode = tonumber(Config.Get("DebugMode"))
 
 -- 根据选择的钓鱼插件设置相应的命令
 if FishingAddon == 1 then
-    -- 空天姬模式
     StartFishingCommand1 = function()
         return "/e 大鱼（红蛆）拍【？46249】23~！！=不撒饵、收藏品、引诱=专一【紫舌尖】"
     end
@@ -170,7 +167,6 @@ if FishingAddon == 1 then
     StopFishingCommand1 = "/e 停止"
     StopFishingCommand2 = "/ac 中断"
 else
-    -- Autohook模式（默认）
     StartFishingCommand1 = "/ahon"
     StartFishingCommand2 = "/ac 抛竿"
     StopFishingCommand1 = "/ahoff"
@@ -187,7 +183,6 @@ end
 -- 状态转换函数
 function ChangeState(newState)
     DebugLog("状态转换: " .. currentState .. " -> " .. newState)
-    lastState = currentState
     currentState = newState
     stateStartTime = os.clock()
     retryCount = 0
@@ -200,12 +195,12 @@ function CheckStateTimeout()
             DebugLog("状态超时: " .. currentState)
             retryCount = retryCount + 1
         
-            if retryCount >= maxRetries  then
+            if retryCount >= maxRetries then
                 ChangeState(STATE.ERROR)
                 return true
             else
-            DebugLog("重试状态: " .. currentState .. " (" .. retryCount .. "/" .. maxRetries .. ")")
-            stateStartTime = os.clock() -- 重置超时计时器
+                DebugLog("重试状态: " .. currentState .. " (" .. retryCount .. "/" .. maxRetries .. ")")
+                stateStartTime = os.clock()
             end
         end
     end
@@ -230,7 +225,6 @@ function GetDistanceToPoint(dX, dY, dZ)
     return math.sqrt(dx * dx + dy * dy + dz * dz)
 end
 
--- 状态检测函数
 function HasStatus(statusId)
     local statusList = Player.Status
     if not statusList then return false end
@@ -262,26 +256,49 @@ function CanAetheria()
     return Inventory.GetCollectableItemCount(CollectibleItemId, 1) > 0
 end
 
-function GetItemCount(itemId)
-    return Inventory.GetItemCount(itemId)
+-- 状态处理函数
+function HandleState_INIT()
+    DebugLog("脚本初始化")
+    ChangeState(STATE.CHECK_PLUGINS)
+    return true
 end
 
-function GetInventoryFreeSlotCount()
-    return Inventory.GetFreeInventorySlots()
+function HandleState_CHECK_PLUGINS()
+    DebugLog("开始检查插件")
+    
+    local requiredPlugins = { "vnavmesh", "DailyRoutines" }
+    if MedicineToUse ~= nil and MedicineToUse ~= "" then
+        table.insert(requiredPlugins, "PandorasBox")
+    end
+    
+    for _, plugin in ipairs(requiredPlugins) do
+        local found = false
+        
+        for installedPlugin in luanet.each(Svc.PluginInterface.InstalledPlugins) do
+            if installedPlugin.InternalName == plugin and installedPlugin.IsLoaded then
+                found = true
+                break
+            end
+        end
+        
+        if not found then
+            yield("/echo 请安装插件: " .. plugin)
+            ChangeState(STATE.ERROR)
+            return false
+        end
+    end
+    
+    DebugLog("插件检查完成")
+    ChangeState(STATE.SWITCH_TO_FISHER)
+    return true
 end
 
-function IsPlayerAvailable()
-    return Player and Player.Available
-end
-
-function IsInZone(zoneId)
-    return Svc.ClientState.TerritoryType == zoneId
-end
-
--- 检查并切换到捕鱼人职业
-function CheckAndSwitchToFisher()
+function HandleState_SWITCH_TO_FISHER()
     local currentJobId = Player.Job.Id
-    if currentJobId == 18 then return true end
+    if currentJobId == 18 then 
+        ChangeState(STATE.DISMOUNT)
+        return true
+    end
     
     DebugLog("当前不是捕鱼人职业，尝试切换到捕鱼人装备")
     
@@ -299,55 +316,143 @@ function CheckAndSwitchToFisher()
         yield('/gs change "' .. fisherGearset.Name .. '"')
         yield("/wait " .. IntervalRate * 3)
         
-        return Player.Job.Id == 18
+        if Player.Job.Id == 18 then
+            ChangeState(STATE.DISMOUNT)
+            return true
+        else
+            yield("/echo 切换捕鱼人职业失败")
+            ChangeState(STATE.ERROR)
+            return false
+        end
     else
         yield("/echo 未找到捕鱼人装备套装")
+        ChangeState(STATE.ERROR)
         return false
     end
 end
 
--- 检查并更换鱼饵
-function CheckAndChangeBait()
-    if FishingBaitId == nil or FishingBaitId == 0 then
-        DebugLog("未设置鱼饵ID，跳过鱼饵检查")
-        return true
-    end
-    
-    -- 检查当前鱼饵
-    local currentBait = Player.FishingBait
-    if currentBait ~= FishingBaitId then
-        DebugLog("当前鱼饵与配置不同，更换鱼饵")
-        yield("/pdr bait " .. tostring(FishingBaitId))
-        yield("/wait " .. IntervalRate * 3)
+function HandleState_DISMOUNT()
+    -- 检查角色是否处于坐骑状态
+    if Svc.Condition[77] or Svc.Condition[4] then
+        yield("/gaction 随机坐骑")
+        yield("/wait " .. IntervalRate * 5)
         
-        -- 确认鱼饵是否更换成功
-        if Player.FishingBait ~= FishingBaitId then
-            yield("/echo 鱼饵更换失败，请检查鱼饵ID是否正确")
-            return false
+        -- 等待下坐骑完成
+        local timeout_start = os.clock()
+        while (Svc.Condition[77] or Svc.Condition[4]) and os.clock() - timeout_start < 10 do
+            yield("/wait " .. IntervalRate)
         end
     end
     
-    -- 检查鱼饵数量
-    local baitCount = GetItemCount(FishingBaitId)
-    if baitCount == 0 then
-        yield("/echo 鱼饵数量为0，脚本停止")
-        return false
-    end
-    
-    DebugLog("当前鱼饵数量: " .. baitCount)
-    return true
+    DebugLog("下坐骑完成")
+    ChangeState(STATE.TELEPORT)
+    return not Svc.Condition[77] and not Svc.Condition[4]
 end
 
--- 使用药品
-function UseMedicine()
-    if not MedicineToUse or MedicineToUse == "" then
-        DebugLog("配置中未设置药品名称，跳过使用药品")
+function HandleState_TELEPORT()
+    if Svc.ClientState.TerritoryType == FishingZoneID then
+        ChangeState(STATE.NAVIGATE_TO_UNMOUNT)
+        return true
+    else
+        DebugLog("不在钓鱼区域，尝试传送")
+        yield("/tp " .. FishingAetheryte)
+        yield("/wait " .. IntervalRate * 5)
+        
+        -- 等待传送完成
+        local timeout_start = os.clock()
+        while Svc.ClientState.TerritoryType ~= FishingZoneID and os.clock() - timeout_start < 30 do
+            yield("/wait " .. IntervalRate * 5)
+        end
+        
+        if Svc.ClientState.TerritoryType == FishingZoneID then
+            ChangeState(STATE.NAVIGATE_TO_UNMOUNT)
+            return true
+        else
+            DebugLog("传送失败")
+            retryCount = retryCount + 1
+            if retryCount >= maxRetries then
+                ChangeState(STATE.ERROR)
+                return false
+            end
+            return true
+        end
+    end
+end
+
+function HandleState_NAVIGATE_TO_UNMOUNT()
+    local distance = GetDistanceToPoint(UnmountPosition.x, UnmountPosition.y, UnmountPosition.z)
+    DebugLog("距离下坐骑位置: " .. distance)
+    
+    if distance <= 11 then
+        ChangeState(STATE.NAVIGATE_TO_FISHING)
+        return true
+    else
+        if distance > 20 then
+            -- 需要上坐骑
+            if not Svc.Condition[4] and not Svc.Condition[77] then
+                yield('/gaction 随机坐骑')
+                yield("/wait " .. IntervalRate * 3)
+            end
+            
+            -- 使用vnavmesh导航
+            if IPC.vnavmesh.IsReady() and not IPC.vnavmesh.IsRunning() then
+                IPC.vnavmesh.PathfindAndMoveTo(Vector3(UnmountPosition.x, UnmountPosition.y, UnmountPosition.z), true)
+            end
+        else
+            -- 近距离直接下坐骑走过去
+            if Svc.Condition[77] or Svc.Condition[4] then
+                yield("/gaction 随机坐骑")
+                yield("/wait " .. IntervalRate * 3)
+            end
+            
+            if IPC.vnavmesh.IsReady() and not IPC.vnavmesh.IsRunning() then
+                IPC.vnavmesh.PathfindAndMoveTo(Vector3(UnmountPosition.x, UnmountPosition.y, UnmountPosition.z), false)
+            end
+        end
+        
+        -- 等待导航完成
+        yield("/wait " .. IntervalRate * 5)
         return true
     end
+end
+
+function HandleState_NAVIGATE_TO_FISHING()
+    local distance = GetDistanceToPoint(FishingPosition.x, FishingPosition.y, FishingPosition.z)
+    DebugLog("距离钓鱼位置: " .. distance)
+    
+    if distance <= 1 then
+        ChangeState(STATE.USE_MEDICINE)
+        return true
+    else
+        -- 确保下坐骑
+        if Svc.Condition[77] or Svc.Condition[4] then
+            yield("/gaction 随机坐骑")
+            yield("/wait " .. IntervalRate * 3)
+        end
+        
+        if IPC.vnavmesh.IsReady() and not IPC.vnavmesh.IsRunning() then
+            IPC.vnavmesh.PathfindAndMoveTo(Vector3(FishingPosition.x, FishingPosition.y, FishingPosition.z), false)
+        end
+        
+        -- 等待导航完成
+        yield("/wait " .. IntervalRate * 5)
+        return true
+    end
+end
+
+function HandleState_USE_MEDICINE()
+    IPC.vnavmesh.Stop() -- 停止可能存在的寻路状态
     
     -- 检查是否已有强化药状态
     if HasStatus(49) then
         DebugLog("已检测到强化药状态，跳过使用")
+        ChangeState(STATE.CHECK_BAIT)
+        return true
+    end
+    
+    if not MedicineToUse or MedicineToUse == "" then
+        DebugLog("配置中未设置药品名称，跳过使用药品")
+        ChangeState(STATE.CHECK_BAIT)
         return true
     end
     
@@ -362,63 +467,46 @@ function UseMedicine()
         yield("/wait 1")
     end
     
-    return HasStatus(49)
+    ChangeState(STATE.CHECK_BAIT)
+    return true
 end
 
--- 下坐骑
-function Dismount()
-    -- 检查角色是否处于坐骑状态
-    if Svc.Condition[77] or Svc.Condition[4] then
-        yield("/gaction 随机坐骑")
-        yield("/wait " .. IntervalRate * 5)
+function HandleState_CHECK_BAIT()
+    if FishingBaitId == nil or FishingBaitId == 0 then
+        DebugLog("未设置鱼饵ID，跳过鱼饵检查")
+        ChangeState(STATE.START_FISHING)
+        return true
+    end
+    
+    -- 检查当前鱼饵
+    local currentBait = Player.FishingBait
+    if currentBait ~= FishingBaitId then
+        DebugLog("当前鱼饵与配置不同，更换鱼饵")
+        yield("/pdr bait " .. tostring(FishingBaitId))
+        yield("/wait " .. IntervalRate * 3)
         
-        -- 等待下坐骑完成
-        local timeout_start = os.clock()
-        while (Svc.Condition[77] or Svc.Condition[4]) and os.clock() - timeout_start < 10 do
-            yield("/wait " .. IntervalRate)
+        -- 确认鱼饵是否更换成功
+        if Player.FishingBait ~= FishingBaitId then
+            yield("/echo 鱼饵更换失败，请检查鱼饵ID是否正确")
+            ChangeState(STATE.ERROR)
+            return false
         end
     end
     
-    DebugLog("下坐骑完成")
-    return not Svc.Condition[77] and not Svc.Condition[4]
-end
-
--- 停止钓鱼
-function StopFishing()
-    DebugLog("停止钓鱼")
-    
-    if Svc.Condition[6] or Svc.Condition[42] or Svc.Condition[27] or Svc.Condition[51] then
-        DebugLog("等待下次上钩后停止")
-        yield("/echo 下次上钩后停止钓鱼")
-        
-        local startTime = os.time()
-        while not Svc.Condition[42] and os.time() - startTime < 60 do
-            yield("/wait " .. IntervalRate)
-        end
-        
-        if Svc.Condition[42] then
-            yield(StopFishingCommand1)
-            yield("/wait " .. IntervalRate)
-            
-            local timeout_start = os.clock()
-            while (Svc.Condition[6] or Svc.Condition[42]) and os.clock() - timeout_start < 10 do
-                yield("/wait " .. IntervalRate)
-                yield(StopFishingCommand2)
-            end
-        end
-    else    
-        yield(StopFishingCommand1)
-        yield("/wait " .. IntervalRate)
-        yield(StopFishingCommand2)
-        yield("/wait " .. IntervalRate * 5)
+    -- 检查鱼饵数量
+    local baitCount = Inventory.GetItemCount(FishingBaitId)
+    if baitCount == 0 then
+        yield("/echo 鱼饵数量为0，脚本停止")
+        ChangeState(STATE.ERROR)
+        return false
     end
     
-    DebugLog("钓鱼已停止")
-    return not Svc.Condition[6] and not Svc.Condition[42]
+    DebugLog("当前鱼饵数量: " .. baitCount)
+    ChangeState(STATE.START_FISHING)
+    return true
 end
 
--- 开始钓鱼
-function StartFishing()
+function HandleState_START_FISHING()
     DebugLog("开始钓鱼")
     
     if type(StartFishingCommand1) == "function" then
@@ -429,17 +517,100 @@ function StartFishing()
     
     yield("/wait " .. IntervalRate)
     yield(StartFishingCommand2)
-    yield("/wait " .. IntervalRate*10) --加一个延迟
+    yield("/wait " .. IntervalRate * 10) -- 加一个延迟
+    
     DebugLog("钓鱼已开始")
+    ChangeState(STATE.FISHING)
+    reCount = 0
     return true
 end
 
--- 修理装备
-function Repair()
+function HandleState_FISHING()
+    -- 检查是否进入幻卡对局室 (区域ID: 579)
+    if Svc.ClientState.TerritoryType == 579 then
+        DebugLog("检测到进入幻卡对局室，停止钓鱼")
+        ChangeState(STATE.TRIPLE_TRIAD)
+        return true
+    end
+    
+    -- 检查是否不在钓鱼状态
+    if not Svc.Condition[6] and not Svc.Condition[42] then
+        if reCount < 3 then
+            reCount = reCount + 1
+            yield("/wait " .. IntervalRate * 20) -- 等待四秒
+        else
+            DebugLog("检测到不在钓鱼状态，重新开始流程")
+            ChangeState(STATE.TELEPORT)
+            return true
+        end
+    end
+    
+    -- 检查是否需要停止钓鱼
+    local freeSlots = Inventory.GetFreeInventorySlots()
+    DebugLog("背包空格: " .. freeSlots)
+    
+    if freeSlots < NumInventoryFreeSlotThreshold or 
+       NeedsRepair(RepairAmount) or 
+       CanExtractMateria() then
+        ChangeState(STATE.STOP_FISHING)
+    else
+        -- 检查鱼饵数量
+        if Inventory.GetItemCount(FishingBaitId) == 0 then
+            yield("/echo 鱼饵数量为0，脚本停止")
+            ChangeState(STATE.ERROR)
+        else
+            -- 继续钓鱼
+            yield("/wait " .. IntervalRate * 10)
+        end
+    end
+    return true
+end
+
+function HandleState_STOP_FISHING()
+    DebugLog("停止钓鱼")
+    yield(StopFishingCommand1)
+    yield("/wait " .. IntervalRate)
+    yield(StopFishingCommand2)
+    yield("/wait " .. IntervalRate * 5)
+    
+    DebugLog("钓鱼已停止")
+    ChangeState(STATE.CHECK_INVENTORY)
+    return not Svc.Condition[6] and not Svc.Condition[42]
+end
+
+function HandleState_CHECK_INVENTORY()
+    -- 检查需要执行哪些操作
+    local needsRepair = NeedsRepair(RepairAmount)
+    local canExtract = CanExtractMateria()
+    local canAetheria = CanAetheria()
+    
+    DebugLog("检查需求 - 修理:" .. tostring(needsRepair) .. 
+            " 精炼:" .. tostring(canExtract) .. 
+            " 精选:" .. tostring(canAetheria))
+    
+    if needsRepair then
+        ChangeState(STATE.REPAIR)
+    elseif canExtract then
+        ChangeState(STATE.EXTRACT_MATERIA)
+    elseif canAetheria then
+        ChangeState(STATE.AETHERIA)
+    else
+        -- 没有需要处理的操作，返回钓鱼
+        ChangeState(STATE.USE_MEDICINE)
+    end
+    return true
+end
+
+function HandleState_REPAIR()
     DebugLog("尝试修理装备")
     
     IPC.vnavmesh.Stop()
-    Dismount()
+    
+    -- 确保下坐骑
+    if Svc.Condition[77] or Svc.Condition[4] then
+        yield("/gaction 随机坐骑")
+        yield("/wait " .. IntervalRate * 3)
+    end
     
     -- 打开修理界面
     local timeout_start = os.clock()
@@ -466,19 +637,25 @@ function Repair()
         yield("/callback Repair true -1")
         
         DebugLog("修理完成")
+        ChangeState(STATE.CHECK_INVENTORY)
         return true
     else
         DebugLog("修理界面打开失败")
+        ChangeState(STATE.CHECK_INVENTORY)
         return false
     end
 end
 
--- 精炼魔晶石
-function ExtractMateria()
+function HandleState_EXTRACT_MATERIA()
     DebugLog("尝试精炼魔晶石")
     
     IPC.vnavmesh.Stop()
-    Dismount()
+    
+    -- 确保下坐骑
+    if Svc.Condition[77] or Svc.Condition[4] then
+        yield("/gaction 随机坐骑")
+        yield("/wait " .. IntervalRate * 3)
+    end
     
     -- 打开精炼界面
     yield("/gaction 精制魔晶石")
@@ -508,26 +685,32 @@ function ExtractMateria()
         yield("/callback Materialize true -1")
         
         DebugLog("精炼魔晶石完成")
+        ChangeState(STATE.CHECK_INVENTORY)
         return true
     else
         DebugLog("精炼界面打开失败")
+        ChangeState(STATE.CHECK_INVENTORY)
         return false
     end
 end
 
--- 精选灵砂
-function Aetheria()
+function HandleState_AETHERIA()
     DebugLog("尝试精选灵砂")
     
     IPC.vnavmesh.Stop()
-    Dismount()
+    
+    -- 确保下坐骑
+    if Svc.Condition[77] or Svc.Condition[4] then
+        yield("/gaction 随机坐骑")
+        yield("/wait " .. IntervalRate * 3)
+    end
     
     -- 打开精选界面
-    yield("/gaction 精选")
     
     local timeout_start = os.clock()
     while not Addons.GetAddon("PurifyItemSelector").Ready and os.clock() - timeout_start < 30 do
-        yield("/wait " .. IntervalRate)
+         yield("/gaction 精选")
+        yield("/wait " .. IntervalRate * 5)
     end
     
     if Addons.GetAddon("PurifyItemSelector").Ready then
@@ -552,290 +735,71 @@ function Aetheria()
             yield("/callback PurifyAutoDialog true 0")
             
             DebugLog("灵砂精选完成")
+            ChangeState(STATE.CHECK_INVENTORY)
             return true
         else
             DebugLog("精选结果界面打开失败")
+            ChangeState(STATE.CHECK_INVENTORY)
             return false
         end
     else
         DebugLog("精选界面打开失败")
+        ChangeState(STATE.CHECK_INVENTORY)
         return false
     end
 end
 
--- 插件检查函数
-function CheckPlugins()
-    DebugLog("开始检查插件")
+function HandleState_TRIPLE_TRIAD()
+    DebugLog("检测到进入幻卡对局室，等待返回钓鱼区域")
     
-    local requiredPlugins = { "vnavmesh", "DailyRoutines" }
-    if MedicineToUse ~= nil and MedicineToUse ~= "" then
-        table.insert(requiredPlugins, "PandorasBox")
+    -- 等待直到返回钓鱼区域
+    while Svc.ClientState.TerritoryType == 579 do
+        yield("/wait " .. IntervalRate * 5)
     end
     
-    for _, plugin in ipairs(requiredPlugins) do
-        local found = false
-        
-        for installedPlugin in luanet.each(Svc.PluginInterface.InstalledPlugins) do
-            if installedPlugin.InternalName == plugin and installedPlugin.IsLoaded then
-                found = true
-                break
-            end
-        end
-        
-        if not found then
-            yield("/echo 请安装插件: " .. plugin)
-            return false
-        end
-    end
-    
-    DebugLog("插件检查完成")
+    DebugLog("已返回钓鱼区域，重新准备钓鱼")
+    yield("/wait " .. IntervalRate * 30) --等待过图
+    ChangeState(STATE.USE_MEDICINE)
     return true
 end
 
--- 状态机主循环
-function StateMachineLoop()
-    if CheckStateTimeout() then
-        yield("/echo 状态机超时，重新尝试")
-        ChangeState(STATE.TELEPORT)
-    end
-    if IsInZone(579) then
-        DebugLog("检测到进入幻卡对局室，停止钓鱼")
-        ChangeState(STATE.TRIPLE_TRIAD)
-    end
-    -- 状态处理
-    if currentState == STATE.INIT then
-        DebugLog("脚本初始化")
-        ChangeState(STATE.CHECK_PLUGINS)
-        
-    elseif currentState == STATE.CHECK_PLUGINS then
-        if CheckPlugins() then
-            ChangeState(STATE.SWITCH_TO_FISHER)
-        else
-            ChangeState(STATE.ERROR)
-        end
-        
-    elseif currentState == STATE.SWITCH_TO_FISHER then
-        if CheckAndSwitchToFisher() then
-            ChangeState(STATE.DISMOUNT)
-        else
-            ChangeState(STATE.ERROR)
-        end
-        
-    elseif currentState == STATE.DISMOUNT then
-        if Dismount() then
-            ChangeState(STATE.TELEPORT)  -- 直接跳转到传送，跳过USE_MEDICINE和CHECK_BAIT
-        else
-            ChangeState(STATE.ERROR)
-        end
-        
-    elseif currentState == STATE.TELEPORT then
-        if IsInZone(FishingZoneID) then
-            ChangeState(STATE.NAVIGATE_TO_UNMOUNT)
-        else
-            DebugLog("不在钓鱼区域，尝试传送")
-            yield("/tp " .. FishingAetheryte)
-            yield("/wait " .. IntervalRate * 5)
-            
-            -- 等待传送完成
-            local timeout_start = os.clock()
-            while not IsInZone(FishingZoneID) and os.clock() - timeout_start < 30 do
-                yield("/wait " .. IntervalRate * 5)
-            end
-            
-            if IsInZone(FishingZoneID) then
-                ChangeState(STATE.NAVIGATE_TO_UNMOUNT)
-            else
-                DebugLog("传送失败")
-                retryCount = retryCount + 1
-                if retryCount >= maxRetries then
-                    ChangeState(STATE.ERROR)
-                end
-            end
-        end
-        
-    elseif currentState == STATE.NAVIGATE_TO_UNMOUNT then
-        local distance = GetDistanceToPoint(UnmountPosition.x, UnmountPosition.y, UnmountPosition.z)
-        DebugLog("距离下坐骑位置: " .. distance)
-        
-        if distance <= 11 then
-            ChangeState(STATE.NAVIGATE_TO_FISHING)
-        else
-            if distance > 20 then
-                -- 需要上坐骑
-                if not Svc.Condition[4] and not Svc.Condition[77] then
-                    yield('/gaction 随机坐骑')
-                    yield("/wait " .. IntervalRate * 3)
-                end
-                
-                -- 使用vnavmesh导航
-                if IPC.vnavmesh.IsReady() and not IPC.vnavmesh.IsRunning() then
-                    IPC.vnavmesh.PathfindAndMoveTo(Vector3(UnmountPosition.x, UnmountPosition.y, UnmountPosition.z), true)
-                end
-            else
-                -- 近距离直接下坐骑走过去
-                Dismount()
-                
-                if IPC.vnavmesh.IsReady() and not IPC.vnavmesh.IsRunning() then
-                    IPC.vnavmesh.PathfindAndMoveTo(Vector3(UnmountPosition.x, UnmountPosition.y, UnmountPosition.z), false)
-                end
-            end
-            
-            -- 等待导航完成
-            yield("/wait " .. IntervalRate * 5)
-        end
-        
-    elseif currentState == STATE.NAVIGATE_TO_FISHING then
-        local distance = GetDistanceToPoint(FishingPosition.x, FishingPosition.y, FishingPosition.z)
-        DebugLog("距离钓鱼位置: " .. distance)
-        
-        if distance <= 1 then
-            ChangeState(STATE.CHECK_INVENTORY)  -- 移动到钓点后检查状态
-        else
-            Dismount()
-            
-            if IPC.vnavmesh.IsReady() and not IPC.vnavmesh.IsRunning() then
-                IPC.vnavmesh.PathfindAndMoveTo(Vector3(FishingPosition.x, FishingPosition.y, FishingPosition.z), false)
-            end
-            
-            -- 等待导航完成
-            yield("/wait " .. IntervalRate * 5)
-        end
-        
-    -- 新增：幻卡对局室状态处理
-    elseif currentState == STATE.TRIPLE_TRIAD then
-        DebugLog("检测到进入幻卡对局室，等待返回钓鱼区域")
-        
-        -- 等待直到返回钓鱼区域
-        while IsInZone(579) do
-            yield("/wait " .. IntervalRate * 5)
-        end
-        
-        DebugLog("已返回钓鱼区域，重新准备钓鱼")
-        ChangeState(STATE.USE_MEDICINE)  -- 返回后重新使用药品和检查鱼饵
-        
-    elseif currentState == STATE.USE_MEDICINE then
-        IPC.vnavmesh.Stop()--停止可能存在的寻路状态
-        if  Svc.Condition[6] or  Svc.Condition[42] then
-            DebugLog("检测到钓鱼状态，退出钓鱼状态")
-            StopFishing()
-        else
-            if UseMedicine() then
-                ChangeState(STATE.CHECK_BAIT)
-            else
-                ChangeState(STATE.CHECK_BAIT) -- 即使药品使用失败也继续
-            end
-        end
-        
-    elseif currentState == STATE.CHECK_BAIT then
-        if CheckAndChangeBait() then
-            ChangeState(STATE.START_FISHING)
-        else
-            ChangeState(STATE.ERROR)
-        end
-        
-    elseif currentState == STATE.START_FISHING then
-        if StartFishing() then
-            ChangeState(STATE.FISHING)
-            reCount = 0
-        else
-            ChangeState(STATE.ERROR)
-        end
-        
-    elseif currentState == STATE.FISHING then
-    -- 检查是否进入幻卡对局室 (区域ID: 579)
-    if IsInZone(579) then
-        DebugLog("检测到进入幻卡对局室，停止钓鱼")
-        ChangeState(STATE.TRIPLE_TRIAD)
-        return true
-    end
-    
-    -- 检查是否不在钓鱼状态（Condition 6: 钓鱼中，Condition 42: 等待上钩）
-    if not Svc.Condition[6] and not Svc.Condition[42] then
-        if reCount < 3 then
-            reCount = reCount + 1
-            yield("/wait " .. IntervalRate * 20) --等待四秒
-        else
-            DebugLog("检测到不在钓鱼状态，重新开始流程")
-            ChangeState(STATE.TELEPORT)
-            return true
-        end
-    end
-    
-    -- 检查是否需要停止钓鱼
-    local freeSlots = GetInventoryFreeSlotCount()
-    DebugLog("背包空格: " .. freeSlots)
-    
-    if freeSlots < NumInventoryFreeSlotThreshold or 
-       NeedsRepair(RepairAmount) or 
-       CanExtractMateria() then
+function HandleState_ERROR()
+    -- 检查是否在钓鱼状态
+    if Svc.Condition[6] or Svc.Condition[42] then
+        DebugLog("错误状态中检测到钓鱼状态，尝试停止钓鱼")
         ChangeState(STATE.STOP_FISHING)
+    -- 检查是否在幻卡对局室
+    elseif Svc.ClientState.TerritoryType == 579 then
+        DebugLog("错误状态中检测到幻卡对局室，等待退出")
+        ChangeState(STATE.TRIPLE_TRIAD)
     else
-        -- 检查鱼饵数量
-        if GetItemCount(FishingBaitId) == 0 then
-            yield("/echo 鱼饵数量为0，脚本停止")
-            ChangeState(STATE.ERROR)
-        else
-            -- 继续钓鱼
-            yield("/wait " .. IntervalRate * 10)
-        end
-    end
-        
-    elseif currentState == STATE.STOP_FISHING then
-        if StopFishing() then
-            ChangeState(STATE.CHECK_INVENTORY)
-        else
-            ChangeState(STATE.ERROR)
-        end
-        
-    elseif currentState == STATE.CHECK_INVENTORY then
-        -- 检查需要执行哪些操作
-        local needsRepair = NeedsRepair(RepairAmount)
-        local canExtract = CanExtractMateria()
-        local canAetheria = CanAetheria()
-        
-        DebugLog("检查需求 - 修理:" .. tostring(needsRepair) .. 
-                " 精炼:" .. tostring(canExtract) .. 
-                " 精选:" .. tostring(canAetheria))
-        
-        if needsRepair then
-            ChangeState(STATE.REPAIR)
-        elseif canExtract then
-            ChangeState(STATE.EXTRACT_MATERIA)
-        elseif canAetheria then
-            ChangeState(STATE.AETHERIA)
-        else
-            -- 没有需要处理的操作，返回钓鱼
-            ChangeState(STATE.USE_MEDICINE)
-        end
-        
-    elseif currentState == STATE.REPAIR then
-        if Repair() then
-            ChangeState(STATE.CHECK_INVENTORY) -- 返回检查其他需求
-        else
-            ChangeState(STATE.CHECK_INVENTORY)
-        end
-        
-    elseif currentState == STATE.EXTRACT_MATERIA then
-        if ExtractMateria() then
-            ChangeState(STATE.CHECK_INVENTORY) -- 返回检查其他需求
-        else
-            ChangeState(STATE.CHECK_INVENTORY)
-        end
-        
-    elseif currentState == STATE.AETHERIA then
-        if Aetheria() then
-            ChangeState(STATE.CHECK_INVENTORY) -- 返回检查其他需求
-        else
-           ChangeState(STATE.CHECK_INVENTORY)
-        end
-        
-    elseif currentState == STATE.ERROR then
-        yield("/echo 脚本遇到错误,重新尝试")
+        DebugLog("错误状态，尝试重新传送")
         ChangeState(STATE.TELEPORT)
     end
-    
     return true
 end
+
+-- 状态处理映射表
+local StateHandlers = {
+    [STATE.INIT] = HandleState_INIT,
+    [STATE.CHECK_PLUGINS] = HandleState_CHECK_PLUGINS,
+    [STATE.SWITCH_TO_FISHER] = HandleState_SWITCH_TO_FISHER,
+    [STATE.DISMOUNT] = HandleState_DISMOUNT,
+    [STATE.TELEPORT] = HandleState_TELEPORT,
+    [STATE.NAVIGATE_TO_UNMOUNT] = HandleState_NAVIGATE_TO_UNMOUNT,
+    [STATE.NAVIGATE_TO_FISHING] = HandleState_NAVIGATE_TO_FISHING,
+    [STATE.USE_MEDICINE] = HandleState_USE_MEDICINE,
+    [STATE.CHECK_BAIT] = HandleState_CHECK_BAIT,
+    [STATE.START_FISHING] = HandleState_START_FISHING,
+    [STATE.FISHING] = HandleState_FISHING,
+    [STATE.STOP_FISHING] = HandleState_STOP_FISHING,
+    [STATE.CHECK_INVENTORY] = HandleState_CHECK_INVENTORY,
+    [STATE.REPAIR] = HandleState_REPAIR,
+    [STATE.EXTRACT_MATERIA] = HandleState_EXTRACT_MATERIA,
+    [STATE.AETHERIA] = HandleState_AETHERIA,
+    [STATE.TRIPLE_TRIAD] = HandleState_TRIPLE_TRIAD,
+    [STATE.ERROR] = HandleState_ERROR
+}
 
 -- 脚本入口点
 DebugLog("脚本启动 - 状态机模式")
@@ -846,7 +810,23 @@ currentState = STATE.INIT
 stateStartTime = os.clock()
 
 -- 主循环
-while StateMachineLoop() do
+while true do
+    if CheckStateTimeout() then
+        yield("/wait " .. IntervalRate)
+    end
+    
+    -- 执行当前状态的处理函数
+    local handler = StateHandlers[currentState]
+    if handler then
+        local success, result = pcall(handler)
+        if not success then
+            DebugLog("状态处理错误: " .. tostring(result))
+            ChangeState(STATE.ERROR)
+        end
+    else
+        DebugLog("未找到状态处理函数: " .. currentState)
+        ChangeState(STATE.ERROR)
+    end
+    
     yield("/wait " .. IntervalRate)
 end
-
