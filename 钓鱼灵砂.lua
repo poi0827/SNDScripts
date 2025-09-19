@@ -569,9 +569,9 @@ end
 function HandleState_STOP_FISHING()
     DebugLog("停止钓鱼")
     yield(StopFishingCommand1)
-    yield("/wait " .. IntervalRate)
+    yield("/wait " .. IntervalRate * 10)
     yield(StopFishingCommand2)
-    yield("/wait " .. IntervalRate * 5)
+    yield("/wait " .. IntervalRate * 10)
     
     DebugLog("钓鱼已停止")
     ChangeState(STATE.CHECK_INVENTORY)
@@ -830,3 +830,4 @@ while true do
     
     yield("/wait " .. IntervalRate)
 end
+
