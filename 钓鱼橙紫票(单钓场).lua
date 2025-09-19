@@ -5,7 +5,7 @@ version: 1.3.2
 description: >
   仓库：https://github.com/poi0827/SNDScripts/
 
-  版本更新：使用状态机重构，加强了稳定性
+  请自行设置DR防警惕，该脚本没有防警惕功能
 
   注意事项：
 
@@ -1353,3 +1353,4 @@ while stateMachine:Execute() do
 end
 
 yield("/echo 脚本结束")
+
