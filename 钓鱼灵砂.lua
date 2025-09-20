@@ -1,9 +1,11 @@
 --[=====[
 [[SND Metadata]]
 author: poi0827
-version: 1.1.5
+version: 1.1.6
 description: >
   此脚本基于钓鱼橙票脚本修改，在钓灵砂鱼的基础上实现了自动修理精炼精选
+
+  v1.1.6尝试修复无法精选收藏品的问题
 
   v1.1.5精简代码
 
@@ -709,7 +711,7 @@ function HandleState_AETHERIA()
     
     local timeout_start = os.clock()
     while not Addons.GetAddon("PurifyItemSelector").Ready and os.clock() - timeout_start < 30 do
-         yield("/gaction 精选")
+        yield("/gaction 精选")
         yield("/wait " .. IntervalRate * 5)
     end
     
@@ -736,6 +738,7 @@ function HandleState_AETHERIA()
             
             DebugLog("灵砂精选完成")
             ChangeState(STATE.CHECK_INVENTORY)
+            yield("/gaction 精选")--关闭精选界面
             return true
         else
             DebugLog("精选结果界面打开失败")
