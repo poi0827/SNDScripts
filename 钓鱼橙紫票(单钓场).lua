@@ -13,7 +13,7 @@ description: >
 
   ②请开启DR自动防警惕
 
-  ③兼容空天姬，需要在DR防警惕中写入额外文本命令 /e ktjys 目标鱼名称
+  ③兼容MissFisher，需要在DR防警惕中写入额外文本命令 /mf preset <目标鱼名称>
 
   ④请自行修改钓场点位，避免模型重叠
 
@@ -27,7 +27,7 @@ plugin_dependencies:
 configs:
   FishingAddon:
     default: 1
-    description: 选择钓鱼插件，0为Autohook，1为空天姬
+    description: 选择钓鱼插件，0为Autohook，1为MissFisher
     type: string
   FishingAetheryte:
     default: 胡萨塔伊驿镇
@@ -170,7 +170,7 @@ DebugMode = tonumber(Config.Get("DebugMode"))
 if FishingAddon == 1 then
     -- 空天姬模式
     StartFishingCommand1 = function()
-        return "/e ktjys " .. TargetFish
+        return "/mf preset " .. TargetFish
     end
     StartFishingCommand2 = ""
     StopFishingCommand1 = "/e 停止"
@@ -1353,4 +1353,5 @@ while stateMachine:Execute() do
 end
 
 yield("/echo 脚本结束")
+
 
