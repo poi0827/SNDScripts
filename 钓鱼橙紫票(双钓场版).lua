@@ -13,13 +13,13 @@ description: >
 
   ②请开启DR自动防警惕
 
-  ③兼容空天姬，需要在DR防警惕中写入额外文本命令 /e ktjys 佐戈秃鹰 (如果目标为佐戈秃鹰,灵岩之剑同理)
+  ③兼容MissFisher，需要在DR防警惕中写入额外文本命令 /mf preset 佐戈秃鹰 (如果目标为佐戈秃鹰,灵岩之剑同理)
 
   ④请自行修改钓场点位，避免模型重叠
 
   ⑤兼容钓鱼紫票，请自行修改钓场
 
-  ⑥新增根据艾欧泽亚时间自动切换钓场功能 双钓场模式建议使用空天姬，不兼容autohook（切预设太麻烦了）
+  ⑥新增根据艾欧泽亚时间自动切换钓场功能 双钓场模式只支持MissFisher
 
 plugin_dependencies:
 - Lifestream
@@ -29,7 +29,7 @@ plugin_dependencies:
 configs:
   FishingAddon:
     default: 1
-    description: 选择钓鱼插件，0为Autohook，1为空天姬
+    description: 选择钓鱼插件，0为Autohook，1为MissFisher
     type: string
   FishingAetheryte1:
     default: 胡萨塔伊驿镇
@@ -256,7 +256,7 @@ if FishingAddon == 1 then
     -- 空天姬模式 - 根据当前钓场选择目标鱼
     StartFishingCommand1 = function()
         local targetFish = GetCurrentTargetFish()
-        return "/e ktjys " .. targetFish
+        return "/mf preset " .. targetFish
     end
     StartFishingCommand2 = ""
     StopFishingCommand1 = "/e 停止"
@@ -1608,4 +1608,5 @@ while stateMachine:Execute() do
 end
 
 yield("/echo 脚本结束")
+
 
