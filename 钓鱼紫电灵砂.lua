@@ -3,7 +3,7 @@
 author: poi0827
 version: 1.1.6
 description: >
-  此脚本基于钓鱼橙票脚本修改，在钓灵砂鱼的基础上实现了自动修理精炼精选
+  此脚本基于钓鱼橙票脚本修改，在钓灵砂鱼的基础上实现了自动修理精炼精选，支持其他灵砂鱼，请自行修改
 
   v1.1.6尝试修复无法精选收藏品的问题
 
@@ -28,7 +28,7 @@ plugin_dependencies:
 configs:
   FishingAddon:
     default: 1
-    description: 选择钓鱼插件，0为Autohook，1为空天姬
+    description: 选择钓鱼插件，0为Autohook，1为MissFisher
     type: int
   FishingAetheryte:
     default: 哈努聚落
@@ -62,7 +62,7 @@ configs:
     description: 钓鱼位置Z坐标
     type: float
   TargetFish:
-    default: Purple Palate
+    default: 紫舌尖
     description: 目标鱼名称
   CollectibleItemId:
     default: 46249
@@ -163,7 +163,7 @@ DebugMode = tonumber(Config.Get("DebugMode"))
 -- 根据选择的钓鱼插件设置相应的命令
 if FishingAddon == 1 then
     StartFishingCommand1 = function()
-        return "/e 大鱼（红蛆）拍【？46249】23~！！=不撒饵、收藏品、引诱=专一【紫舌尖】"
+        return "/mf preset 紫舌尖"
     end
     StartFishingCommand2 = ""
     StopFishingCommand1 = "/e 停止"
@@ -833,4 +833,5 @@ while true do
     
     yield("/wait " .. IntervalRate)
 end
+
 
