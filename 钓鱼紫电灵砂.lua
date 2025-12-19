@@ -11,7 +11,7 @@ description: >
 
   v1.1.4使用状态机模式重构，尝试修复未检测到幻卡对局室的问题
 
-  作者修改的其他脚本：https://github.com/poi0827/SNDScripts/
+  由于目前国服插件未适配 需要手动传送到钓场地图再执行脚本
 
   注意事项：
 
@@ -24,7 +24,6 @@ description: >
 plugin_dependencies:
 - vnavmesh
 - DailyRoutines
-- TeleporterPlugin
 configs:
   FishingAddon:
     default: 1
@@ -85,7 +84,7 @@ configs:
     description: 是否自动修理
     type: bool
   MedicineToUse:
-    default: 极精炼药
+    default:
     description: 吃什么药（不想使用请留空）
   RepairAmount:
     default: 50
@@ -833,5 +832,6 @@ while true do
     
     yield("/wait " .. IntervalRate)
 end
+
 
 
