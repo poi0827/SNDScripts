@@ -165,7 +165,7 @@ if FishingAddon == 1 then
         return "/mf preset 紫舌尖"
     end
     StartFishingCommand2 = ""
-    StopFishingCommand1 = "/e 停止"
+    StopFishingCommand1 = "/mf end"
     StopFishingCommand2 = "/ac 中断"
 else
     StartFishingCommand1 = "/ahon"
@@ -832,6 +832,7 @@ while true do
     
     yield("/wait " .. IntervalRate)
 end
+
 
 
 
