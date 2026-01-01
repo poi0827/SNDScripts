@@ -173,7 +173,7 @@ if FishingAddon == 1 then
         return "/mf preset " .. TargetFish
     end
     StartFishingCommand2 = ""
-    StopFishingCommand1 = "/e 停止"
+    StopFishingCommand1 = "/mf end"
     StopFishingCommand2 = "/ac 中断"
 else
     -- Autohook模式（默认）
@@ -1353,5 +1353,6 @@ while stateMachine:Execute() do
 end
 
 yield("/echo 脚本结束")
+
 
 
