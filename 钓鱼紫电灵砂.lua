@@ -1,9 +1,11 @@
 --[=====[
 [[SND Metadata]]
 author: poi0827
-version: 1.1.6
+version: 1.1.7
 description: >
   此脚本基于钓鱼橙票脚本修改，在钓灵砂鱼的基础上实现了自动修理精炼精选，支持其他灵砂鱼，请自行修改
+
+  v1.1.7尝试修复精选卡住的问题，优化界面关闭逻辑（不知道修没修好，也不知道到底咋卡的，建议先把dr自动精选关了）
 
   v1.1.6尝试修复无法精选收藏品的问题
 
@@ -252,7 +254,16 @@ function CanExtractMateria()
 end
 
 function CanAetheria()
-    return Inventory.GetCollectableItemCount(CollectibleItemId, 1) > 0
+    local count = Inventory.GetCollectableItemCount(CollectibleItemId, 1)
+    DebugLog("精选检查 - 物品ID: " .. CollectibleItemId .. ", 数量: " .. count)
+    return count > 0
+end
+
+-- 检查是否在精选界面中的函数
+function IsInPurifyInterface()
+    return Addons.GetAddon("PurifyItemSelector").Ready or 
+           Addons.GetAddon("PurifyResult").Ready or
+           Addons.GetAddon("PurifyAutoDialog").Ready
 end
 
 -- 状态处理函数
@@ -532,6 +543,15 @@ function HandleState_FISHING()
         return true
     end
     
+    -- 检查是否在精选界面卡住
+    if IsInPurifyInterface() then
+        DebugLog("检测到卡在精选界面，尝试退出")
+        yield("/key ESC")
+        yield("/wait " .. IntervalRate * 3)
+        ChangeState(STATE.CHECK_INVENTORY)
+        return true
+    end
+    
     -- 检查是否不在钓鱼状态
     if not Svc.Condition[6] and not Svc.Condition[42] then
         if reCount < 3 then
@@ -705,45 +725,74 @@ function HandleState_AETHERIA()
     end
     
     -- 打开精选界面
+    DebugLog("打开精选界面")
+    yield("/gaction 精选")
+    yield("/wait " .. IntervalRate * 5)
     
     local timeout_start = os.clock()
-    while not Addons.GetAddon("PurifyItemSelector").Ready and os.clock() - timeout_start < 30 do
-        yield("/gaction 精选")
-        yield("/wait " .. IntervalRate * 5)
+    while not Addons.GetAddon("PurifyItemSelector").Ready and os.clock() - timeout_start < 10 do
+        yield("/wait " .. IntervalRate)
     end
     
     if Addons.GetAddon("PurifyItemSelector").Ready then
+        DebugLog("精选界面已打开，选择第一个物品")
         yield("/callback PurifyItemSelector true 12 0")
-        yield("/wait " .. IntervalRate * 5)
+        yield("/wait " .. IntervalRate * 3)
         
+        -- 等待确认对话框
+        timeout_start = os.clock()
+        while not Addons.GetAddon("SelectYesno").Ready and os.clock() - timeout_start < 10 do
+            yield("/wait " .. IntervalRate)
+        end
+        
+        if Addons.GetAddon("SelectYesno").Ready then
+            yield("/callback SelectYesno true 0")
+            yield("/wait " .. IntervalRate * 5)
+        end
+        
+        -- 等待精选完成（有结果界面）
         timeout_start = os.clock()
         while not Addons.GetAddon("PurifyResult").Ready and os.clock() - timeout_start < 30 do
             yield("/wait " .. IntervalRate)
         end
         
         if Addons.GetAddon("PurifyResult").Ready then
+            DebugLog("精选结果界面已打开")
             yield("/callback PurifyResult true 0")
+            yield("/wait " .. IntervalRate * 3)
             
-            -- 等待精选完成
-            timeout_start = os.clock()
-            while CanAetheria() do
-                yield("/wait " .. IntervalRate * 5)
+            -- 关闭结果界面
+            if Addons.GetAddon("PurifyResult").Ready then
+                yield("/callback PurifyResult true -1")
+                yield("/wait " .. IntervalRate * 3)
             end
             
-            yield("/wait " .. IntervalRate * 5)
-            yield("/callback PurifyAutoDialog true 0")
+            -- 关闭精选界面
+            if Addons.GetAddon("PurifyItemSelector").Ready then
+                yield("/callback PurifyItemSelector true -1")
+                yield("/wait " .. IntervalRate * 3)
+            end
+            
+            -- 额外按ESC确保关闭所有界面
+            yield("/key ESC")
+            yield("/wait " .. IntervalRate * 3)
             
             DebugLog("灵砂精选完成")
-            ChangeState(STATE.CHECK_INVENTORY)
-            yield("/gaction 精选")--关闭精选界面
-            return true
         else
-            DebugLog("精选结果界面打开失败")
-            ChangeState(STATE.CHECK_INVENTORY)
-            return false
+            DebugLog("精选结果界面未出现，尝试关闭界面")
+            yield("/key ESC")
+            yield("/wait " .. IntervalRate * 3)
+            yield("/key ESC")
         end
+        
+        -- 确保界面关闭
+        yield("/wait " .. IntervalRate * 5)
+        ChangeState(STATE.CHECK_INVENTORY)
+        return true
     else
-        DebugLog("精选界面打开失败")
+        DebugLog("精选界面打开失败，尝试ESC取消")
+        yield("/key ESC")
+        yield("/wait " .. IntervalRate * 5)
         ChangeState(STATE.CHECK_INVENTORY)
         return false
     end
@@ -830,8 +879,3 @@ while true do
     
     yield("/wait " .. IntervalRate)
 end
-
-
-
-
-
